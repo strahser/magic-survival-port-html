@@ -1,0 +1,30 @@
+'use strict';
+/* ===== artifacts.js: артефакты торговца (данные) ===== */
+const ARTSHOP=[
+ {id:'rune2',name:'Руна мощи II',icon:'⚔️',price:90,desc:'+35% урона',apply:g=>g.stats.dmg+=.35},
+ {id:'chrono2',name:'Часы мага II',icon:'⏳',price:90,desc:'−18% перезарядка',apply:g=>g.stats.cdr=Math.max(.5,g.stats.cdr*.82)},
+ {id:'boots2',name:'Сапоги ветра II',icon:'👢',price:70,desc:'+18% скорость',apply:g=>g.stats.spdMul+=.18},
+ {id:'amulet2',name:'Амулет жизни II',icon:'❤️',price:80,desc:'+50 макс.HP, лечит 50',apply:g=>{g.player.maxhp+=50;g.player.hp=Math.min(g.player.maxhp,g.player.hp+50);}},
+ {id:'lens2',name:'Фокус-линза II',icon:'🌐',price:80,desc:'+25% область',apply:g=>g.stats.area+=.25},
+ {id:'grim2',name:'Гримуар II',icon:'📖',price:80,desc:'+40% опыта и золота',apply:g=>{g.stats.xp+=.40;g.stats.gold+=.40;}},
+ {id:'vamp',name:'Клык вампира',icon:'🦷',price:110,desc:'+2 HP за убийство (общий предел насыщения)',apply:g=>g.stats.vamp+=2},
+ {id:'stone',name:'Каменный щит',icon:'🛡️',price:90,desc:'+3 броня',apply:g=>g.stats.armor+=3},
+ {id:'phoenix',name:'Перо феникса',icon:'🪶',price:150,desc:'Воскрешение 1 раз (50% HP)',apply:g=>g.stats.phoenix++},
+ {id:'crit',name:'Око криты',icon:'👁️',price:100,desc:'Каждый 4-й удар ×2',apply:g=>g.stats.crit=true},
+ {id:'stormgem',name:'Гроза-камень',icon:'🌩️',price:130,desc:'Авто-молния по 3 врагам / 6с',apply:g=>g.stats.stormgem=true},
+ /* новые — под билды лучей/вихрей/двойников */
+ {id:'prism',name:'Гранёная призма',icon:'🔻',price:120,desc:'+1 луч (Лучи хаоса / Лазерный шторм)',apply:g=>g.stats.raysBonus++},
+ {id:'mirrorg',name:'Зеркало душ',icon:'🪞',price:120,desc:'+1 двойник-мираж',apply:g=>g.stats.mirrorBonus++},
+ {id:'tentacles',name:'Щупальца пустоты',icon:'🐙',price:130,desc:'+6% урона за каждый активный луч',apply:g=>g.stats.tentacles=true},
+ {id:'blackcat',name:'Чёрная кошка',icon:'🐈',price:100,desc:'−9% перезарядка всех заклинаний',apply:g=>g.stats.cdr=Math.max(.4,g.stats.cdr*.91)},
+ {id:'accelerator',name:'Ускоритель',icon:'🏎️',price:110,desc:'Перезарядка тем ниже, чем выше ваша скорость',apply:g=>g.stats.accelerator=true},
+ {id:'genome',name:'Генофаг',icon:'🧬',price:140,desc:'У всех врагов −15% здоровья',apply:g=>g.stats.genome=true},
+ {id:'scythe',name:'Коса жнеца',icon:'🪓',price:140,desc:'8% шанс мгновенной казни (не элита/босс)',apply:g=>g.stats.scythe=true},
+ {id:'clockwork',name:'Хронометр',icon:'⏱️',price:130,desc:'Каждые 20с все враги замирают на 2с',apply:g=>g.stats.clockwork=true},
+ {id:'amplifier',name:'Усилитель',icon:'📡',price:100,desc:'+20% область заклинаний',apply:g=>g.stats.area+=.2},
+ {id:'electromag',name:'Электромагнит',icon:'🧲',price:120,desc:'+40% урон вихрей и двойников',apply:g=>g.stats.electro=true},
+ {id:'ember',name:'Тлеющий уголь',icon:'🔥',price:100,cls:'pyro',desc:'+50% сила поджога',apply:g=>g.stats.burnMult+=.5},
+ {id:'lantern',name:'Фонарь душ',icon:'🏮',price:100,cls:'necro',desc:'+1 скелет-страж',apply:g=>g.stats.skelBonus++},
+ {id:'conductor',name:'Проводник',icon:'🔱',price:100,cls:'storm',desc:'+1 цепь молнии',apply:g=>g.stats.chainBonus++},
+ {id:'prismc',name:'Призма Архимага',icon:'🔷',price:100,cls:'arcane',desc:'+1 чародейская стрела',apply:g=>g.stats.projBonus++},
+];
