@@ -164,7 +164,12 @@ if(G.mode==='shooter'&&G.shoot){const pr=G.shoot.dist/G.shoot.goal;
   sc.innerHTML=`<div class="scIcon">${sy.icon}</div><div class="scName">~ ${sy.name}</div><div class="scDesc">${sy.desc}</div><div class="scNeeds">${sy.need.map(n=>{
    if(n.type==='passive')return `<span class="scNeed" style="color:#8ce99a">✦ ${PASSIVE_DEF[n.id].name}</span>`;
    const ow=spellOwner(n.id);return `<span class="scNeed" style="color:${ow?CLASSES[ow].color:'#fff'}">${SPELL_DEF[n.id].icon} ${SPELL_DEF[n.id].name}</span>`;}).join(' + ')}</div>`;}
- else sc.classList.add('hide');}
+else sc.classList.add('hide');
+  if(G.interT>0){const a=clamp(G.interT/1.6,0,1);
+   ctx.fillStyle='rgba(0,0,0,'+(a*.85)+')';ctx.fillRect(0,0,W,H);
+   ctx.globalAlpha=a;ctx.font='52px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.fillStyle='#fff';ctx.shadowColor='#7ee8fa';ctx.shadowBlur=20;
+   ctx.fillText('СЦЕНА '+(G.stage+1),W/2,H/2);ctx.shadowBlur=0;ctx.globalAlpha=1;}}
 /* ввод */
 addEventListener('keydown',e=>{initAudio();
  if(state==='intro'){skipIntro();return;}
