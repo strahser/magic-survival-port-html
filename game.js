@@ -59,7 +59,7 @@ function startGame(key,test,daily){const C=CLASSES[key],P=BALANCE.player,E=BALAN
   merchantT:15,merchant:null,merchantCd:0,towerT:60,guardT:30,bossWarn:0,bossWarnIdx:-1,ambT:0,evT:25,ev:null,
   runBosses:0,runCrafts:0,runT2:0,achNewly:[],waveCount:0,vowSpdMul:1,
   actIntroT:0,lastAct:-1,noiseT:0,invertT:0,settings:loadSet(),
-  stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,beamFx:0,prep:0,bossArena:null,synShown:new Set(),synCard:null,interT:0,jumps:0,
+  stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,beamFx:0,prep:0,bossArena:null,synShown:new Set(),synCard:null,interT:0,jumps:0,boost:{rate:0,spread:0},shipShield:0,boosts:[],spiralT:0,
   track:{dmg:0,crits:0,hearts:0,chests:0,gold:0,evos:0},log:[],milestones:{},telemetry:[],logT:0,lastHit:'',
   cam:{x:WORLD/2,y:WORLD/2},bossRef:null,
   dust:Array.from({length:70},()=>({x:rnd(0,WORLD),y:rnd(0,WORLD),r:rnd(.8,2),ph:rnd(0,TAU)})),
@@ -250,9 +250,10 @@ function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
   G.ebullets=[];G.bullets=[];
   G.player.x=WORLD/2;G.player.y=WORLD/2;G.cam.x=WORLD/2;G.cam.y=WORLD/2;
   G.shoot={dist:0,goal:SH.goal,t:0,warp:SH.warp,mid:false,kills:0};G.travT=0;G.autoT=0;
+  G.boost={rate:0,spread:0};G.shipShield=0;G.boosts=[];G.spiralT=0;
   banner('→ ГИПЕРПРЫЖОК →');sfx('time');}
  function endShooter(){const k=G.shoot?G.shoot.kills:0;G.jumps=(G.jumps||0)+1;
-  G.mode='play';G.shoot=null;G.enemies=[];G.ebullets=[];G.bullets=[];
+  G.mode='play';G.shoot=null;G.enemies=[];G.ebullets=[];G.bullets=[];G.boosts=[];
   G.player.x=WORLD/2;G.player.y=WORLD/2;G.cam.x=WORLD/2;G.cam.y=WORLD/2;G.interT=1.6;
   banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ · прыжок: '+k+' уб.');sfx('level');
   if(G.telemetry)G.telemetry.push({jump:true,kills:k,stage:G.stage});}
@@ -271,7 +272,7 @@ function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
  function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter;
   if(!G.shoot)return;
   G.shoot.t+=dt;
-  if(G.shoot.warp>0){G.shoot.warp-=dt;}
+  if(G.shoot.warp>0){G.shoot.warp-=dt;G.shake=2;}
   else{G.shoot.dist+=dt*SH.speed;
    const ph=clamp(G.shoot.dist/G.shoot.goal,0,1);
    if(!G.shoot.mid&&G.shoot.dist>=G.shoot.goal*.5){G.shoot.mid=true;
@@ -279,19 +280,35 @@ function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
     G.enemies.push(e);banner('!! ЭЛИТА В ГИПЕРПРОСТРАНСТВЕ');}
    G.travT-=dt;
    if(G.travT<=0){G.travT=lerp(SH.spawnStart,SH.spawnEnd,ph)/(1+G.stage*.15);spawnShooterEnemy();}
+const alive=G.enemies.filter(e=>!e.dead);
+   const up=alive.filter(e=>e.y<p.y);
+   const tars=up.length?up:alive;
+   let ang=-Math.PI/2;
+   if(tars.length){let t=tars[0];for(const e of tars){if(Math.abs(e.y-p.y)<Math.abs(t.y-p.y))t=e;}
+    ang=Math.atan2(t.y-p.y,t.x-p.x);}
    G.autoT-=dt;
-if(G.autoT<=0){G.autoT=.17;const dmg=(SH.autoDmg+G.stage*8)*s.dmg;
-     const alive=G.enemies.filter(e=>!e.dead);
-     const up=alive.filter(e=>e.y<p.y);
-     const tars=up.length?up:alive;
-     let ang=-Math.PI/2;
-     if(tars.length){let ty=0,tx=0;for(const e of tars){ty+=e.y;tx+=e.x;}ty/=tars.length;tx/=tars.length;
-      ang=Math.atan2(ty-p.y,tx-p.x);}
-     G.bullets.push({x:p.x,y:p.y-22,vx:Math.cos(ang)*520,vy:Math.sin(ang)*520,r:6,kind:'pierce',elem:'^',dmg,pierce:4,life:1.9,hit:new Set(),col:'#fff'});
-     const ex=G.stats.raysBonus+(G.spells.ray?SPELL_DEF.ray.lv[G.spells.ray-1].n:0);
-     if(ex>0){for(let off=-1;off<=1;off+=2){const aa=ang+off*.14;
-      G.bullets.push({x:p.x-16*off,y:p.y-12,vx:Math.cos(aa)*480,vy:Math.sin(aa)*480,r:5,kind:'pierce',elem:'^',dmg:dmg*.7,pierce:2,life:1.7,hit:new Set(),col:'#9fd8ff'});}}}
-   if(G.shoot.dist>=G.shoot.goal)endShooter();}}
+ if(G.autoT<=0){G.autoT=.17;const dmg=(SH.autoDmg+G.stage*8)*s.dmg;
+      G.bullets.push({x:p.x,y:p.y-22,vx:Math.cos(ang)*520,vy:Math.sin(ang)*520,r:6,kind:'pierce',elem:'^',dmg,pierce:4,life:1.9,hit:new Set(),col:'#fff'});
+      if(G.boost.spread>0){for(let off=-1;off<=1;off+=2){const aa=ang+off*.26;
+       G.bullets.push({x:p.x-14*off,y:p.y-14,vx:Math.cos(aa)*480,vy:Math.sin(aa)*480,r:4,kind:'pierce',elem:'^',dmg:dmg*.55,pierce:1,life:1.5,hit:new Set(),col:'#ffd166'});}}
+      const ex=G.stats.raysBonus+(G.spells.ray?SPELL_DEF.ray.lv[G.spells.ray-1].n:0);
+      if(ex>0){for(let off=-1;off<=1;off+=2){const aa=ang+off*.14;
+       G.bullets.push({x:p.x-16*off,y:p.y-12,vx:Math.cos(aa)*480,vy:Math.sin(aa)*480,r:5,kind:'pierce',elem:'^',dmg:dmg*.7,pierce:2,life:1.7,hit:new Set(),col:'#9fd8ff'});}}}
+    G.spiralT-=dt;
+    if(ph>=SH.spiralAt&&G.spiralT<=0){G.spiralT=.22;const sd=(SH.autoDmg+G.stage*8)*s.dmg*.6,rot=G.shoot.t*6;
+     for(const so of[-1,1]){const aa=ang+so*rot;
+      G.bullets.push({x:p.x,y:p.y-22,vx:Math.cos(aa)*500,vy:Math.sin(aa)*500,r:5,kind:'pierce',elem:'^',dmg:sd,pierce:2,life:1.7,hit:new Set(),col:'#7ee8fa'});}}
+    if(!G.shoot.sent&&ph>=SH.bossAt){G.shoot.sent=true;const b=BALANCE.enemies.brute;
+     const e={x:p.x+rnd(-120,120),y:p.y-190,r:b.r*1.6,hp:b.hp*hpMul()*6,maxhp:b.hp*hpMul()*6,spd:0,dmg:b.dmg,xp:12,goldV:0,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'brute',elite:true,boss:false,sh:true,sent:true,shMode:'hover',shV:70,shA:90,shF:1.4,shPh:0,shootT:1,tier:4};
+     G.enemies.push(e);banner('☠ ГИПЕРСТРАЖ');}
+    for(let bi=G.boosts.length-1;bi>=0;bi--){const bo=G.boosts[bi];bo.t+=dt;
+     if(Math.hypot(bo.x-p.x,bo.y-p.y)<34){applyBoost(bo.ty);G.boosts.splice(bi,1);}}
+    G.boost.rate=Math.max(0,G.boost.rate-dt);G.boost.spread=Math.max(0,G.boost.spread-dt);
+    if(G.shoot.dist>=G.shoot.goal)endShooter();}}
+function applyBoost(ty){const D=BALANCE.shooter.boostDur;
+ if(ty===0){G.boost.rate=D;banner('▲▲ СКОРОСТРЕЛЬНОСТЬ');}
+ else if(ty===1){G.boost.spread=D;banner('≡ ВЕЕР');}
+ else{G.shipShield=2;banner('◯ ЩИТ');}sfx('level');}
 function crossUnlocked(){return G.player.level>=12||COMBOS.some(c=>c.cls===G.key&&G.combosAcquired.has(c.id));}
 function artRank(a){if(a.craftOnly)return'СБОРКА';if(a.cls)return'КЛАСС';if(a.req)return'ТИР+';return a.price>=130?'III':a.price>=90?'II':'I';}
 function openReward(n){const owned=new Set(G.artifacts);
@@ -364,6 +381,8 @@ function dealDamage(e,dmg,o){o=o||{};if(e.dead)return;
  if(e.hp<=0)kill(e,o.src);}
 function kill(e,src){if(e.dead)return;e.dead=true;G.kills++;
   if(G.mode==='shooter'&&G.shoot)G.shoot.kills++;
+  if(G.mode==='shooter'&&e.sh&&!e.sent&&Math.random()<BALANCE.shooter.dropChance)G.boosts.push({x:e.x,y:e.y,t:0,ty:Math.floor(Math.random()*3)});
+  if(e.sent){addGold(80);G.boosts.push({x:e.x,y:e.y,t:0,ty:1});banner('☠ СТРАЖ ПАЛ: +$80');}
   gainXP(e.xp);addGold(e.goldV||e.xp);
  const vamp=G.stats.vamp+synSum('vamp');
  if(vamp>0&&G.vampBudget>0){const h=Math.min(vamp,G.vampBudget);G.vampBudget-=h;G.player.hp=Math.min(G.player.maxhp,G.player.hp+h);}
@@ -389,6 +408,7 @@ function areaDamage(x,y,r,dmg,o){o=o||{};for(const e of G.enemies){if(e.dead)con
   if(o.knock!==false){const a=Math.atan2(e.y-y,e.x-x),k=o.knock||150;e.kx+=Math.cos(a)*k;e.ky+=Math.sin(a)*k;}}}}
 function explode(x,y,r,dmg,o){o=o||{};areaDamage(x,y,r,dmg,o);fxRing(x,y,r*.25,r,o.col||'#ffb45e',.3);burst(x,y,o.col||'#ffb45e',10,150);G.shake=Math.max(G.shake,o.shake||2);if(o.boom)sfx('boom');}
 function damagePlayer(d){const p=G.player;G.lastHit='враг';if(p.ifr>0||state!=='play')return;if(G.test)return;
+  if(G.shipShield>0){G.shipShield--;banner('◯ ЩИТ');sfx('zap');G.shake=Math.max(G.shake,2);return;}
  if(G.vowDmgMul)d*=G.vowDmgMul;
  if(G.diffMode===2)d*=BALANCE.chaos.dmg;
  d=Math.max(1,Math.round(d-getArmor()));p.hp-=d;p.ifr=BALANCE.player.ifr;G.hitFlash=.4;G.shake=Math.max(G.shake,6);sfx('hurt');dmgText(p.x,p.y,d,'#ff7b7b');
@@ -607,10 +627,15 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
    else if(m==='dive'){const a=Math.atan2(p.y-e.y,p.x-e.x);e.x+=Math.cos(a)*e.shV*1.3*dt;e.y+=Math.sin(a)*e.shV*1.3*dt;}
    else if(m==='hover'){if(e.y<p.y-160)e.y+=e.shV*dt;else e.x+=Math.sin(e.shPh)*e.shA*dt;}
    e.x=clamp(e.x,20,WORLD-20);
+   e.y+=Math.sin(e.shPh)*22*dt;
    if(e.shMode!=='dive'&&e.y>p.y-150)e.y-=140*dt;
    if(e.y<p.y-H/2-260)e.y+=80*dt;
    if(e.y>p.y+140){e.y=p.y-H/2-rnd(0,220);e.x=clamp(p.x+rnd(-W,W)*.8,30,WORLD-30);e.shootT=rnd(1,2);}
-else if((e.type==='shooter'||m==='hover')&&e.y<p.y+H/2){e.shootT-=dt;
+if(e.sent&&e.y<p.y+H/2){e.shootT-=dt;
+     if(e.shootT<=0){e.shootT=1.6;const a=Math.atan2(p.y-e.y,p.x-e.x);
+      for(let i=-2;i<=2;i++){const aa=a+i*.16;
+       G.ebullets.push({x:e.x,y:e.y,vx:Math.cos(aa)*200,vy:Math.sin(aa)*200,r:6,dmg:e.dmg*.8,life:3});}}}
+    else if((e.type==='shooter'||m==='hover')&&e.y<p.y+H/2){e.shootT-=dt;
      if(e.shootT<=0){e.shootT=rnd(1.2,2);const a=Math.atan2(p.y-e.y,p.x-e.x);
       if(m==='hover'&&G.stage>=2){for(let i=-1;i<=1;i++){const aa=a+i*.3;
        G.ebullets.push({x:e.x,y:e.y,vx:Math.cos(aa)*190,vy:Math.sin(aa)*190,r:5,dmg:e.dmg*.8,life:3});}}

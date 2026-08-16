@@ -119,9 +119,15 @@ if(G.mode!=='shooter'){const GOLD='#ffd166';
  for(const f of G.ringPos)glyph('*',f.x,f.y,20,.95,10);
  if(G.mirrorPos)for(const mp of G.mirrorPos)glyph('@',mp.x,mp.y,18,.4,4);
  for(const pet of G.pets)glyph('¤',pet.x,pet.y+Math.sin(pet.bob)*2.5,18,.9,8);
- if(G.mode==='shooter'){glyph('▲',p.x,p.y,36,1,20);
-   const n=8,filled=Math.round(clamp(p.hp/p.maxhp,0,1)*n);
-   glyph('['+'█'.repeat(filled)+'░'.repeat(n-filled)+']',p.x,p.y+30,12,.8);}
+if(G.mode==='shooter'){glyph('▲',p.x,p.y,36,1,20);
+    const n=8,filled=Math.round(clamp(p.hp/p.maxhp,0,1)*n);
+    glyph('['+'█'.repeat(filled)+'░'.repeat(n-filled)+']',p.x,p.y+30,12,.8);
+    if(G.shipShield>0){ctx.save();ctx.strokeStyle='#8ce99a';ctx.lineWidth=3;ctx.shadowColor='#8ce99a';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,34+Math.sin(G.t*6)*4,0,TAU);ctx.stroke();ctx.restore();}
+    let bx=p.x-58;
+    if(G.boost.rate>0){glyph('▲▲',bx,p.y+46,13,.9,6);bx+=22;}
+    if(G.boost.spread>0){glyph('≡',bx,p.y+46,13,.9,6);bx+=22;}
+    if(G.shipShield>0){glyph('◯',bx,p.y+46,13,.9,6);}
+    for(const bo of G.boosts)glyph(['▲▲','≡','◯'][bo.ty],bo.x,bo.y+Math.sin(bo.t*3)*5,20,.95,10);}
   else if(!(p.ifr>0&&(G.t*20|0)%2===0)){glyph('@',p.x,p.y,44,1,22);
   const n=8,filled=Math.round(clamp(p.hp/p.maxhp,0,1)*n);
   glyph('['+'█'.repeat(filled)+'░'.repeat(n-filled)+']',p.x,p.y+30,12,.8);

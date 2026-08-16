@@ -17,7 +17,7 @@ const BALANCE={
   chaos:{hp:1.3,dmg:1.1,spawn:1.2,reward:1.5}},
  waves:{every:32,count:12,hp:10,dmg:12,spd:80},
 bosses:{times:[70,180,300,430],hp:[450,1100,2200,3600],dmg:24,spd:46,projDmg:18,shootEvery:3.2,projCountBase:5},
-  shooter:{goal:7000,speed:230,spawnStart:2.2,spawnEnd:1.4,autoDmg:20,stageHp:.2,stageDmg:.15,warp:1.2},
+  shooter:{goal:7000,speed:230,spawnStart:1.9,spawnEnd:1.2,autoDmg:24,stageHp:.2,stageDmg:.15,warp:1.2,spiralAt:.6,bossAt:.85,dropChance:.12,boostDur:6},
   towers:{hp:180,gold:45,heal:30,xp:10,projDmg:8,shootEvery:3,projCount:3},
  economy:{heartEveryKills:26,heartHeal:14,heartMagnet:260},
  pets:{levels:[10,15,20],baseDmg:8,perLevel:.7,meleeSpeed:215,rangedSpeed:195,shootCd:1,shootRange:320},
