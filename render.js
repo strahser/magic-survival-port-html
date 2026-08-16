@@ -207,6 +207,7 @@ $('winGo').onclick=()=>{G.endless=true;$('winOv').classList.add('hide');state='p
 $('winMenu').onclick=toMenu;
  $('shopClose').onclick=closeShop;
  $('treeSkip').onclick=closeTreeChoice;
+ $('tab-tree').addEventListener('click',e=>{const c=e.target.closest('.mtCard');if(c&&c.dataset.mtid)showMtPopup(c.dataset.mtid);});
 document.querySelectorAll('.tabbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const t=b.dataset.tab;
  ['magic','combos','syn','stats','arts','tree'].forEach(x=>$('tab-'+x).classList.toggle('hide',x!==t));});
 function syncSetBtns(){if(!G)return;

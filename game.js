@@ -60,7 +60,7 @@ function startGame(key,test,daily){const C=CLASSES[key],P=BALANCE.player,E=BALAN
   runBosses:0,runCrafts:0,runT2:0,achNewly:[],waveCount:0,vowSpdMul:1,
   actIntroT:0,lastAct:-1,noiseT:0,invertT:0,settings:loadSet(),
   stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,beamFx:0,prep:0,bossArena:null,synShown:new Set(),synCard:null,interT:0,jumps:0,boost:{rate:0,spread:0},shipShield:0,boosts:[],spiralT:0,
-  htree:new Set(),sparks:0,hbuff:{rate:0,pierce:0,dmg:0,barrels:0,hull:0,magnet:1,healOnGlyph:0},treeOpts:[],
+  htree:new Set(),sparks:0,hbuff:{rate:0,pierce:0,dmg:0,barrels:0,hull:0,magnet:1,healOnGlyph:0},treeOpts:[],readyEvoShown:new Set(),
   track:{dmg:0,crits:0,hearts:0,chests:0,gold:0,evos:0},log:[],milestones:{},telemetry:[],logT:0,lastHit:'',
   cam:{x:WORLD/2,y:WORLD/2},bossRef:null,
   dust:Array.from({length:70},()=>({x:rnd(0,WORLD),y:rnd(0,WORLD),r:rnd(.8,2),ph:rnd(0,TAU)})),
@@ -146,39 +146,64 @@ function buildSynergyGrid(){const g=document.createElement('div');g.style.cssTex
 function buildPassiveGrid(){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
  for(const id in PASSIVE_DEF)g.appendChild(passiveCard(id));return g;}
 function syHasCross(sy,k){return sy.need.some(n=>{if(n.type==='passive')return false;const ow=spellOwner(n.id);return ow&&ow!==k;});}
-function mtCard(icon,name,sub,status,color){
+function mtCard(icon,name,sub,status,color,mtId){
  const cls=status==='own'?'mtOwn':status==='ready'?'mtReady':status==='lock'?'mtLock':'mtIdle';
- return `<div class="mtCard ${cls}" style="border-color:${color}55"><div class="mtIcon" style="color:${color}">${icon}</div><div class="mtName">${name}</div><div class="mtSub">${sub}</div></div>`;}
+ return `<div class="mtCard ${cls}" style="border-color:${color}55" data-mtid="${mtId}"><div class="mtIcon" style="color:${color}">${icon}</div><div class="mtName">${name}</div><div class="mtSub">${sub}</div></div>`;}
 function buildTreePane(){const k=G.key,C=CLASSES[k],unl=crossUnlocked();let h='<div class="mtree">';
  const readyEvo=COMBOS.filter(c=>(!c.cls||c.cls===G.key)&&!G.combosAcquired.has(c.id)&&comboConditionsMet(c)).length;
  const readySyn=SYNERGIES.filter(sy=>!synergyActive(sy)&&sy.need.every(n=>n.type==='passive'?(G.passives[n.id]||0)>=1:(G.spells[n.id]||0)>=1)).length;
  if(readyEvo||readySyn)h+=`<div class="mtReadyBar">★ готово к слиянию: ${readyEvo} эво${readySyn?' · ~ синергий: '+readySyn:''}</div>`;
  h+=`<div class="mtSec"><span class="mtSecIcon" style="color:${C.color}">${C.icon}</span>${C.name} — основная школа</div><div class="mtRow">`;
  for(const id of C.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0,mx=d.lv.length;
-  h+=mtCard(d.icon,d.name,'●'.repeat(lv)+'○'.repeat(mx-lv),lv?'own':'idle',C.color);}
+  h+=mtCard(d.icon,d.name,'●'.repeat(lv)+'○'.repeat(mx-lv),lv?'own':'idle',C.color,'spell:'+id);}
  h+='</div><div class="mtArrow">↓ синергии</div>';
  h+=`<div class="mtSec"><span class="mtSecIcon">~</span>Синергии</div><div class="mtRow">`;
  for(const sy of SYNERGIES){const on=synergyActive(sy),gated=!unl&&syHasCross(sy,k);
   const comp=sy.need.map(n=>n.type==='passive'?PASSIVE_DEF[n.id].icon:SPELL_DEF[n.id].icon).join('+');
-  h+=mtCard(sy.icon,sy.name,comp,on?'own':gated?'lock':'idle',on?'#8ce99a':gated?'#7d8fa8':'#c99bff');}
+  h+=mtCard(sy.icon,sy.name,comp,on?'own':gated?'lock':'idle',on?'#8ce99a':gated?'#7d8fa8':'#c99bff','syn:'+sy.id);}
  h+='</div><div class="mtArrow">↓ эволюции</div>';
  h+=`<div class="mtSec"><span class="mtSecIcon">⭐</span>Эволюции</div><div class="mtRow">`;
  for(const c of COMBOS){if(c.cls&&c.cls!==k)continue;
   if(c.need.every(n=>n.type!=='passive'&&SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo))continue;
   const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
   const comp=c.need.map(n=>n.type==='passive'?PASSIVE_DEF[n.id].icon:SPELL_DEF[n.id].icon).join('+');
-  h+=mtCard(c.icon,c.name,comp+(rd&&!on?' ★':''),on?'own':rd?'ready':'idle',CLASSES[c.cls]?CLASSES[c.cls].color:'#fff');}
+  h+=mtCard(c.icon,c.name,comp+(rd&&!on?' ★':''),on?'own':rd?'ready':'idle',CLASSES[c.cls]?CLASSES[c.cls].color:'#fff','combo:'+c.id);}
  h+='</div>';
  const t2s=COMBOS.filter(c=>(!c.cls||c.cls===k)&&c.need.every(n=>n.type!=='passive'&&SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo));
  if(t2s.length){h+=`<div class="mtSec"><span class="mtSecIcon">⭐⭐</span>Эволюции ТИР2</div><div class="mtRow">`;
   for(const c of t2s){const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
-   h+=mtCard(c.icon,c.name,c.need.map(n=>SPELL_DEF[n.id].icon).join('+'),on?'own':rd?'ready':'idle','#ffd166');}
+   h+=mtCard(c.icon,c.name,c.need.map(n=>SPELL_DEF[n.id].icon).join('+'),on?'own':rd?'ready':'idle','#ffd166','combo:'+c.id);}
   h+='</div>';}
  h+=`<div class="mtSec"><span class="mtSecIcon">🔒</span>Второстепенные школы ${unl?'(открыто)':'(нужна эволюция своей школы или LV12)'}</div><div class="mtRow">`;
  for(const ok of CLASS_ORDER){if(ok===k)continue;const OC=CLASSES[ok];
   for(const id of OC.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0;
-   h+=mtCard(d.icon,d.name,lv?'●'.repeat(lv):(unl?'доступно':'закрыто'),lv?'own':unl?'idle':'lock',OC.color);}}
+   h+=mtCard(d.icon,d.name,lv?'●'.repeat(lv):(unl?'доступно':'закрыто'),lv?'own':unl?'idle':'lock',OC.color,'spell:'+id);}}
  h+='</div></div>';$('tab-tree').innerHTML=h;}
+function showMtPopup(key){const i=key.indexOf(':'),type=key.slice(0,i),id=key.slice(i+1);let h='';
+ if(type==='spell'){const d=SPELL_DEF[id],lv=G.spells[id]||0,ow=spellOwner(id),OC=ow?CLASSES[ow]:null;
+  const rows=d.lv.map((c,j)=>`<div class="mppRow${j===lv-1?' cur':''}">${R[j]}: ${spellDesc(id,j+1)}</div>`).join('');
+  h=`<div class="mpIcon" style="color:${OC?OC.color:'#fff'}">${d.icon}</div><div class="mpName">${d.name}</div>
+   <div class="mpSub">${OC?OC.name:'общее'} · ${lv?'ур '+R[lv-1]:'не изучено'}</div><div class="mpLevels">${rows}</div>`;}
+ else if(type==='syn'){const sy=SYNERGIES.find(s=>s.id===id);if(!sy)return;
+  const needs=sy.need.map(n=>{if(n.type==='passive')return `<span style="color:${(G.passives[n.id]||0)?'#8ce99a':'#7d8fa8'}">✦ ${PASSIVE_DEF[n.id].name}</span>`;
+   const ow=spellOwner(n.id),has=(G.spells[n.id]||0)>=1;
+   return `<span style="color:${has?'#8ce99a':(ow?CLASSES[ow].color:'#fff')}">${SPELL_DEF[n.id].icon} ${SPELL_DEF[n.id].name}</span>`;}).join(' + ');
+  h=`<div class="mpIcon" style="color:#c99bff">${sy.icon}</div><div class="mpName">${sy.name}</div>
+   <div class="mpSub">синергия · ${synergyActive(sy)?'АКТИВНА':'не активна'}</div><div class="mpReq">${needs}</div><div class="mpDesc">${sy.desc||''}</div>`;}
+ else if(type==='combo'){const c=COMBOS.find(x=>x.id===id);if(!c)return;
+  const t2=c.need.every(n=>n.type!=='passive'&&SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo);
+  const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
+  const needs=c.need.map(n=>{if(n.type==='passive')return `<span style="color:${(G.passives[n.id]||0)>=n.lv?'#8ce99a':'#7d8fa8'}">✦ ${PASSIVE_DEF[n.id].name} ур ${n.lv}</span>`;
+   const cur=G.spells[n.id]||0,ok=cur>=n.lv,ow=spellOwner(n.id);
+   return `<span style="color:${ok?'#8ce99a':(ow?CLASSES[ow].color:'#fff')}">${SPELL_DEF[n.id].icon} ${SPELL_DEF[n.id].name} ур ${n.lv}${ok?' ✔':' ('+cur+')'}</span>`;}).join(' + ');
+  h=`<div class="mpIcon" style="color:#ffd166">${c.icon}</div><div class="mpName">${c.name}${t2?' · ТИР2':''}</div>
+   <div class="mpSub">эволюция · ${on?'ИЗУЧЕНА':rd?'★ готова к слиянию':'не готова'}</div><div class="mpReq">${needs}</div><div class="mpDesc">${c.desc||''}</div>`;}
+ $('mtPopupBody').innerHTML=h;$('mtPopup').classList.remove('hide');}
+function closeMtPopup(){$('mtPopup').classList.add('hide');}
+function checkReadyEvos(){if(!G.readyEvoShown)G.readyEvoShown=new Set();
+ for(const c of COMBOS){if(G.readyEvoShown.has(c.id)||G.combosAcquired.has(c.id))continue;
+  if(c.cls&&c.cls!==G.key&&!G.test)continue;
+  if(comboConditionsMet(c)){G.readyEvoShown.add(c.id);banner('★ ГОТОВО К СЛИЯНИЮ: '+c.name);sfx('choose');}}}
 function buildSpellGrid(k){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
  for(const id of Object.keys(SPELL_DEF))if(!SPELL_DEF[id].combo&&spellOwner(id)===k)g.appendChild(spellCard(id));return g;}
 function capText(c){const t=[];
@@ -198,7 +223,7 @@ function passiveCard(id){const d=PASSIVE_DEF[id],lv=G.passives[id]||0,max=lv>=d.
 function pickSpell(id){if(state!=='choice')return;const d=SPELL_DEF[id],lv=G.spells[id]||0;if(lv>=d.lv.length)return;G.spells[id]=lv+1;banner(d.icon+' '+d.name+' '+R[lv]);finishChoice();}
 function pickPassive(id){if(state!=='choice')return;const d=PASSIVE_DEF[id],lv=G.passives[id]||0;if(lv>=d.max)return;G.passives[id]=lv+1;if(d.keep)d.apply(G);recomputeStats();banner(d.icon+' '+d.name);finishChoice();}
 function pickCombo(c){if(state!=='choice'||G.combosAcquired.has(c.id)||!comboConditionsMet(c))return;acquireCombo(c);finishChoice();}
-function finishChoice(){refreshBuildUI();sfx('choose');G.pendLevel--;G.choiceDelay=.35;$('choice').classList.add('hide');state='play';}
+function finishChoice(){refreshBuildUI();sfx('choose');G.pendLevel--;G.choiceDelay=.35;$('choice').classList.add('hide');state='play';checkReadyEvos();}
 function spellDesc(id,lv){const c=SPELL_DEF[id].lv[lv-1],L={dmg:'урон',n:'снар',aoe:'радиус',burn:'поджог',pierce:'проб',chains:'цепи',r:'радиус',heal:'хил',dps:'урон/с',dur:'длит',armor:'броня',pulse:'имп',nova:'нова',novaR:'радиус новы',stormN:'гром',stormDmg:'урон грома',pull:'тяги',orbs:'сфер',drain:'жатва',range:'дальн',width:'ширина',boom:'взрыв',stun:'стан'},b=[];for(const k in L)if(c[k])b.push(L[k]+':'+c[k]);return b.join(' ');}
 function shopPool(){const owned=new Set(G.artifacts);const pool=ARTSHOP.filter(a=>!a.craftOnly&&!owned.has(a.id)&&(!a.req||owned.has(a.req)));
  const off=[];const spec=pool.filter(a=>a.cls===G.key);if(spec.length)off.push(spec[Math.random()*spec.length|0]);

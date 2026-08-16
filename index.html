@@ -96,6 +96,16 @@ h1{font-size:64px;letter-spacing:6px;color:#fff}
 .mtLock::after{content:'🔒';position:absolute;top:2px;right:5px;font-size:12px}
 .mtArrow{text-align:center;color:var(--dim);font-size:18px;padding:2px 0}
 .mtReadyBar{color:#ffd166;font-size:17px;text-align:center;padding:4px 0;border:1px dashed rgba(255,209,102,.4);margin-bottom:6px}
+#mtPopup{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center}
+.mpBox{max-width:420px;background:rgba(0,0,0,.92);border:1px solid var(--line);padding:20px 24px;text-align:center}
+.mpIcon{font-size:44px}
+.mpName{font-size:26px;color:#fff}
+.mpSub{color:var(--dim);font-size:16px;margin-bottom:10px}
+.mpReq{font-size:17px;margin:8px 0;line-height:1.5}
+.mpDesc{color:var(--ink);font-size:16px;margin-top:8px}
+.mpLevels{text-align:left;font-size:15px;color:var(--dim);margin-top:8px}
+.mppRow{padding:2px 0}
+.mppRow.cur{color:#ffd166}
 .tabpane{max-width:680px;width:100%;max-height:56vh;overflow:auto;border:1px dashed var(--line);padding:14px 18px}
 .treeRoot{max-width:720px;margin:0 auto}
 .treeBranch{margin:14px 0 4px}
@@ -189,6 +199,7 @@ h1{font-size:64px;letter-spacing:6px;color:#fff}
 <div id="shopOv" class="screen hide"><div class="ovTitle">£ ТОРГОВЕЦ</div><div id="shopGoldBig"></div><div id="shopNote"></div><div id="shopTabs" class="choiceTabs"></div><div id="shopItems"></div><div id="shopInfo" class="note"></div><div class="row"><button class="btn" id="shopClose">[ УЙТИ ]</button></div></div>
 <div id="rewardOv" class="screen hide"><div class="ovTitle">✦ НАГРАДА</div><div class="sub" style="color:var(--dim)">выберите один артефакт</div><div id="rewardItems" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center"></div></div>
 <div id="treeOv" class="screen hide"><div class="ovTitle">⚡ ГИПЕРДЕРЕВО</div><div class="sub" id="treeSparks" style="color:var(--dim)"></div><div id="treeItems" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center"></div><div class="row" style="margin-top:16px"><button class="btn" id="treeSkip">[ ПРОПУСТИТЬ ]</button></div></div>
+<div id="mtPopup" class="hide" onclick="if(event.target===this)closeMtPopup()"><div class="mpBox"><div id="mtPopupBody"></div><div class="row" style="margin-top:14px"><button class="btn" onclick="closeMtPopup()">[ ЗАКРЫТЬ ]</button></div></div></div>
 <div id="synCard" class="hide"></div>
 <div id="testOv" class="screen hide"><div class="ovTitle">¤ СТЕНД</div>
  <div class="testSliders"><label>скорость <b id="spdVal">1.0x</b><input type="range" id="spdSlider" min="0.5" max="3" step="0.1" value="1"></label><label>сложность <b id="diffVal">3</b><input type="range" id="diffSlider" min="1" max="10" step="1" value="3"></label></div>
