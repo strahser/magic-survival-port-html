@@ -36,7 +36,7 @@ function recordRun(won){try{const key='ms_best_'+(G.diffMode===2?'chaos':'norm')
  const run={k:G.kills,won,diff:G.diffMode,gold:G.gold,bosses:G.runBosses,crafts:G.runCrafts,t2:G.runT2};
  const newly=[];for(const a of ACH)if(!m.ach[a.id]&&a.test(run,m)){m.ach[a.id]=1;newly.push(a.name);}
  saveMeta(m);G.achNewly=newly;
-  const entry={diff:G.diffMode,cls:G.key,vow:G.vow,t:Math.round(G.t),kills:G.kills,lv:G.player.level,cause:G.lastHit,snap:G.telemetry};
+  const entry={diff:G.diffMode,cls:G.key,vow:G.vow,daily:G.daily,stage:G.stage,mode:G.diffMode,t:Math.round(G.t),kills:G.kills,lv:G.player.level,cause:G.lastHit,snap:G.telemetry};
   try{const L=JSON.parse(localStorage.getItem('ms_log')||'[]');
    L.push(entry);
    while(L.length>20)L.shift();localStorage.setItem('ms_log',JSON.stringify(L));
@@ -95,10 +95,10 @@ function recomputeStats(){const s=G.stats;
  for(const id in G.passives){if(PASSIVE_DEF[id].keep)continue;for(let i=0;i<G.passives[id];i++)PASSIVE_DEF[id].apply(G);}
  for(const id of G.artifacts){const a=ARTSHOP.find(x=>x.id===id);if(a&&!a.keep)a.apply(G);}
  applyVowStats();}
-function gainXP(v){const p=G.player;p.xp+=v*G.stats.xp*(G.diffMode===2?1.5:1)*(G.ev&&G.ev.type==='tide'?1.5:1);let lv=false;
+function gainXP(v){const p=G.player;p.xp+=v*G.stats.xp*(G.diffMode===2?BALANCE.chaos.reward:1)*(G.ev&&G.ev.type==='tide'?1.5:1);let lv=false;
  while(p.xp>=p.xpNext){p.xp-=p.xpNext;p.level++;G.pendLevel++;p.xpNext=Math.round(BALANCE.xp.base*Math.pow(p.level,BALANCE.xp.power)+BALANCE.xp.add);p.hp=Math.min(p.maxhp,p.hp+BALANCE.player.healOnLevel);sfx('level');fxRing(p.x,p.y,10,60,'#fff',.4);banner('⬆ УРОВЕНЬ '+p.level);if(BALANCE.pets.levels.includes(p.level)&&G.pets.length<BALANCE.pets.levels.length)spawnPet();lv=true;}
  if(lv)G.invertT=.45;}
-function addGold(v){const gv=Math.round(v*G.stats.gold*(G.diffMode===2?1.5:1)*(G.ev&&G.ev.type==='tide'?1.5:1));G.gold+=gv;if(G.track)G.track.gold+=gv;if(performance.now()-lastPick>120){sfx('coin');lastPick=performance.now();}}
+function addGold(v){const gv=Math.round(v*G.stats.gold*(G.diffMode===2?BALANCE.chaos.reward:1)*(G.ev&&G.ev.type==='tide'?1.5:1));G.gold+=gv;if(G.track)G.track.gold+=gv;if(performance.now()-lastPick>120){sfx('coin');lastPick=performance.now();}}
 function spawnPet(){const d=PET_DEF[G.key];G.pets.push({x:G.player.x+rnd(-30,30),y:G.player.y+rnd(-30,30),r:9,col:d.col,ranged:d.ranged,t:0,shootT:rnd(0,.5),bob:rnd(0,TAU),orb:rnd(0,TAU)});banner('¤ '+d.name.toUpperCase());sfx('pet');refreshBuildUI();}
 function updatePets(dt){const p=G.player,PT=BALANCE.pets,dmg=PT.baseDmg+p.level*PT.perLevel;
  for(const pet of G.pets){pet.bob+=dt*6;pet.t-=dt;const tg=nearestEnemy(pet.x,pet.y);let dx=0,dy=0;
@@ -176,32 +176,45 @@ function craftRecipe(r){for(const n of r.need){const i=G.artifacts.indexOf(n);if
  G.artifacts.push(r.id);G.runCrafts++;recomputeStats();banner(r.icon+' СОБРАНО: '+r.name);sfx('craft');renderShop();refreshBuildUI();}
 function shopPrice(a){const base={'I':70,'II':160,'III':420,'КЛАСС':240,'ТИР+':520}[artRank(a)]||a.price;
  return Math.round(base*(1+G.t/900));}
+let shopTab='I';
 function renderShop(){$('shopGoldBig').textContent='$ '+G.gold;
- $('shopNote').textContent='все артефакты · цена растёт со временем · клик — рецепт';
- const box=$('shopItems');box.innerHTML='';
- const owned=new Set(G.artifacts);
+ $('shopNote').textContent='все артефакты · клик по карточке — рецепт · цены растут со временем';
  const tabs=$('shopTabs');tabs.innerHTML='';
- const defs=[['I','ОБЫЧНОЕ'],['II','РЕДКОЕ'],['III','ЭПИК']];let cur=0;
- const inTab=a=>cur===0?artRank(a)==='I':cur===1?artRank(a)==='II':['III','КЛАСС','ТИР+'].includes(artRank(a));
- defs.forEach((d,i)=>{const b=document.createElement('button');b.className='ctab'+(i===cur?' active':'');b.textContent=d[0]+' '+d[1];b.onclick=()=>{cur=i;renderShop();};tabs.appendChild(b);});
- const list=ARTSHOP.filter(a=>!a.craftOnly&&inTab(a));
- for(const a of list){const p=shopPrice(a);const has=owned.has(a.id);const reqOk=!a.req||owned.has(a.req);
+ for(const[t,l]of[['I','ОБЫЧНОЕ'],['II','РЕДКОЕ'],['III','ЭПИК/КЛАСС']]){
+  const b=document.createElement('button');b.className='ctab'+(shopTab===t?' active':'');b.textContent=l;
+  b.onclick=()=>{shopTab=t;renderShop();};tabs.appendChild(b);}
+ const box=$('shopItems');box.innerHTML='';const owned=new Set(G.artifacts);
+ const inTab=a=>{const r=artRank(a);return shopTab==='I'?r==='I':shopTab==='II'?r==='II':(r==='III'||r==='КЛАСС'||r==='ТИР+');};
+ for(const a of ARTSHOP){if(a.craftOnly||!inTab(a))continue;
+  const p=shopPrice(a),has=owned.has(a.id),reqOk=!a.req||owned.has(a.req),can=!has&&reqOk&&G.gold>=p;
   const el=document.createElement('div');el.className='shopItem';
-  el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name} <span style="color:var(--dim)">(${artRank(a)})</span></div><div class="siDesc">${a.desc}</div><button class="buyBtn" ${(has||!reqOk||G.gold<p)?'disabled':''}>${has?'ЕСТЬ':p}</button>`;
+  el.innerHTML=`${a.req?'<div class="siTag">УЛУЧШ</div>':a.cls?'<div class="siTag">КЛАСС</div>':''}<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn" ${can?'':'disabled'}>${has?'ЕСТЬ':reqOk?p:'нужен '+(ARTSHOP.find(x=>x.id===a.req)||{}).name}</button>`;
   el.querySelector('.siIcon').onclick=()=>showArtRecipes(a);
-  el.querySelector('.buyBtn').onclick=()=>{if(has||!reqOk||G.gold<p)return;G.gold-=p;if(a.req){const i=G.artifacts.indexOf(a.req);if(i>=0)G.artifacts.splice(i,1);}G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();sfx('buy');refreshBuildUI();renderShop();};
+  el.querySelector('.siName').onclick=()=>showArtRecipes(a);
+  el.querySelector('.buyBtn').onclick=()=>{if(!can)return;G.gold-=p;if(a.req){const i=G.artifacts.indexOf(a.req);if(i>=0)G.artifacts.splice(i,1);}G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();sfx('buy');refreshBuildUI();renderShop();};
   box.appendChild(el);}
  const cr=craftableRecipes();
  if(cr.length){const h=document.createElement('div');h.style.cssText='width:100%;text-align:center;color:#8ce99a';h.textContent='— СБОРКА —';box.appendChild(h);
-  for(const r of cr){const res=ARTSHOP.find(a=>a.id===r.id);const el=document.createElement('div');el.className='shopItem';
+  for(const r of cr){const res=ARTSHOP.find(x=>x.id===r.id);const el=document.createElement('div');el.className='shopItem';
    el.innerHTML=`<div class="siTag">СБОРКА</div><div class="siIcon">${r.icon}</div><div class="siName">${r.name}</div><div class="siDesc">${res.desc}</div><button class="buyBtn">СОБРАТЬ</button>`;
-   el.querySelector('.buyBtn').onclick=()=>craftRecipe(r);box.appendChild(el);}}}
+   el.querySelector('.buyBtn').onclick=()=>craftRecipe(r);box.appendChild(el);}}
+ $('shopInfo').textContent='';}
 function showArtRecipes(a){const rs=RECIPES.filter(r=>r.need.includes(a.id)||r.id===a.id);
  let s=a.icon+' '+a.name+': ';
  if(!rs.length)s+='вне сборок';
  else s+=rs.map(r=>{const miss=r.need.filter(n=>!G.artifacts.includes(n)).map(n=>(ARTSHOP.find(x=>x.id===n)||{}).name||n);
-  return r.name+(miss.length?' (нет: '+miss.join(', ')+')':' (готово)');}).join(' · ');
+  return (r.id===a.id?'собирает '+r.name:'→ '+r.name)+(miss.length?' (нет: '+miss.join(', ')+')':' (готово)');}).join(' · ');
  $('shopInfo').textContent=s;}
+function openReward(n){const owned=new Set(G.artifacts);
+ const pool=ARTSHOP.filter(a=>!a.craftOnly&&!owned.has(a.id)&&(!a.req||owned.has(a.req))).sort(()=>Math.random()-.5).slice(0,n);
+ if(!pool.length){addGold(60);banner('+60');return;}
+ G.rewardOffers=pool;state='reward';$('rewardOv').classList.remove('hide');renderReward();}
+function renderReward(){const box=$('rewardItems');box.innerHTML='';
+ for(const a of G.rewardOffers){const el=document.createElement('div');el.className='shopItem';
+  el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn">ВЗЯТЬ</button>`;
+  el.querySelector('.buyBtn').onclick=()=>{if(state!=='reward')return;G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();sfx('buy');closeReward();};
+  box.appendChild(el);}}
+function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';}
 function openChest(ch){const CH=BALANCE.chests;
  if(ch.golden){openReward(3);banner('¤ СУНДУК: ВЫБОР АРТЕФАКТА');}
  else{const gold=CH.goldMin+Math.round(G.t*CH.goldPerMin);G.gold+=gold;banner('◊ СУНДУК: +'+gold);}
@@ -211,13 +224,13 @@ function artRank(a){if(a.craftOnly)return'СБОРКА';if(a.cls)return'КЛАС
 function openReward(n){const owned=new Set(G.artifacts);
  const pool=ARTSHOP.filter(a=>!a.craftOnly&&!owned.has(a.id)&&(!a.req||owned.has(a.req))).sort(()=>Math.random()-.5).slice(0,n);
  if(!pool.length){addGold(60);banner('+60');return;}
- G.rewardOffers=pool;state='reward';renderReward();$('rewardOv').classList.remove('hide');}
+ G.rewardOffers=pool;state='reward';$('rewardOv').classList.remove('hide');renderReward();}
 function renderReward(){const box=$('rewardItems');box.innerHTML='';
  for(const a of G.rewardOffers){const el=document.createElement('div');el.className='shopItem';
   el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn">ВЗЯТЬ</button>`;
-  el.querySelector('.buyBtn').onclick=()=>{G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();closeReward();};
+  el.querySelector('.buyBtn').onclick=()=>{if(state!=='reward')return;G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();sfx('buy');closeReward();};
   box.appendChild(el);}}
-function closeReward(){$('rewardOv').classList.add('hide');if(state==='reward')state='play';}
+function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';}
 function recipesFor(id){return RECIPES.filter(r=>r.need.includes(id)||r.id===id);}
 function refreshBuildUI(){const sk=$('skills');sk.innerHTML='';
  for(const id in G.spells){const d=SPELL_DEF[id];sk.innerHTML+=`<div class="chip">${d.icon}<b>${d.combo?'★':R[G.spells[id]-1]}</b></div>`;}
@@ -294,6 +307,7 @@ function areaDamage(x,y,r,dmg,o){o=o||{};for(const e of G.enemies){if(e.dead)con
 function explode(x,y,r,dmg,o){o=o||{};areaDamage(x,y,r,dmg,o);fxRing(x,y,r*.25,r,o.col||'#ffb45e',.3);burst(x,y,o.col||'#ffb45e',10,150);G.shake=Math.max(G.shake,o.shake||2);if(o.boom)sfx('boom');}
 function damagePlayer(d){const p=G.player;G.lastHit='враг';if(p.ifr>0||state!=='play')return;if(G.test)return;
  if(G.vowDmgMul)d*=G.vowDmgMul;
+ if(G.diffMode===2)d*=BALANCE.chaos.dmg;
  d=Math.max(1,Math.round(d-getArmor()));p.hp-=d;p.ifr=BALANCE.player.ifr;G.hitFlash=.4;G.shake=Math.max(G.shake,6);sfx('hurt');dmgText(p.x,p.y,d,'#ff7b7b');
  if(p.hp<=0){if(G.stats.phoenix>0){G.stats.phoenix--;p.hp=p.maxhp*.5;p.ifr=2;banner('v ФЕНИКС');G.shake=10;sfx('level');return;}p.hp=0;gameOver();}}
 function deathBurst(){const p=G.player;G.shake=12;const ch=['@','*','~','^','.',',','Ω','†'];
@@ -315,7 +329,7 @@ function winGame(){state='win';winBurst();recordRun(true);
 /* ---------- спавн ---------- */
 function spawnPos(){const p=G.player,a=rnd(0,TAU),d=Math.hypot(W,H)/2+80;return{x:clamp(p.x+Math.cos(a)*d,20,WORLD-20),y:clamp(p.y+Math.sin(a)*d,20,WORLD-20)};}
 function hpMul(){const t=G.t,E=BALANCE.enemies;let b=1+t*E.hpGrowth+Math.pow(t/60,2)*E.hpCurve;
- if(G.stats.genome)b*=.85;if(G.vowHpMul)b*=G.vowHpMul;b*=1+(G.stage||0)*.15;return b*(1+((G.diff||1)-1)*E.diffHp);}
+ if(G.stats.genome)b*=.85;if(G.vowHpMul)b*=G.vowHpMul;b*=1+(G.stage||0)*.15;if(G.diffMode===2)b*=BALANCE.chaos.hp;return b*(1+((G.diff||1)-1)*E.diffHp);}
 function spawnEnemy(type,elite,pos){const p=pos||spawnPos(),m=hpMul(),E=BALANCE.enemies,sd=1+G.t/E.spdGrowth;let b;
  if(type==='runner')b=E.runner;else if(type==='brute')b=E.brute;else if(type==='shooter')b=E.shooter;else if(type==='healer')b=E.healer;else b=E.blob;
  const e={x:p.x,y:p.y,r:b.r,hp:b.hp*m,spd:b.spd*sd,dmg:b.dmg,xp:b.xp,goldV:b.gold,uid:uidN++,maxhp:b.hp*m,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type,elite:false,boss:false,tier:Math.min(4,Math.floor(G.t/150)+1)};
@@ -347,7 +361,7 @@ function director(dt){if(G.travel>0)return;G.spawnT-=dt;G.waveT-=dt;G.merchantT-
  if(G.towerT<=0){G.towerT=75;spawnTower();}
  if(G.guardT<=0){G.guardT=75;spawnGuard();}
  if(G.evT<=0){G.evT=rnd(45,60);startEvent();}
- if(G.spawnT<=0){G.spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/((1+((G.diff||1)-1)*E.diffSpawn)*(G.diffMode===2?1.25:1)*(1+(G.stage||0)*.1));
+ if(G.spawnT<=0){G.spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/((1+((G.diff||1)-1)*E.diffSpawn)*(G.diffMode===2?BALANCE.chaos.spawn:1)*(1+(G.stage||0)*.1));
   const group=1+Math.floor(clamp(t/E.groupRampT,0,E.groupMax-1));
   for(let i=0;i<group&&G.enemies.length<E.cap;i++){
    const type=t<50?'blob':t<130?pickArr(['blob','blob','runner']):t<180?pickArr(['blob','runner','runner','brute']):pickArr(['blob','runner','brute','shooter','shooter','healer']);

@@ -9,12 +9,12 @@
       "goldSpent": 3361
     },
     "necro": {
-      "norma": 57,
-      "chaos": 32,
+      "norma": 60,
+      "chaos": 33,
       "survP50": 600,
       "artifacts": 10,
-      "goldEarned": 2285,
-      "goldSpent": 2150
+      "goldEarned": 2311,
+      "goldSpent": 2148
     },
     "storm": {
       "norma": 66,
@@ -34,13 +34,13 @@
     }
   },
   "overall": {
-    "norma": 61,
+    "norma": 62,
     "chaos": 48
   },
   "autotune": {
-    "score": 64.25,
+    "score": 65.75,
     "hc": 0.04,
     "dg": 500,
-    "hl": 13
+    "hl": 18
   }
 }
