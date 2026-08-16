@@ -45,15 +45,20 @@ let hp=maxhp,level=1,xp=0,xpNext=BALANCE.xp.start;
  let backlog=0,surv=600,hpFrac=1,bossIdx=0;
  let waveNext=40,waveCount=0,guardNext=60,evNext=40,evType='',evEnd=0;
  const ratios=[],boss=[];
- const xpMul=(cfg.diff===2?1.5:1)*(cfg.vow==='greed'?1.5:1);
- const foeHpMul=(cfg.diff===2?1.5:1)*(cfg.vow==='greed'?1.2:1)*cfg.foe;
- const foeDmgMul=(cfg.diff===2?1.35:1)*(cfg.vow==='greed'?1.1:1);
- const spawnMul=(cfg.diff===2?1.25:1);
- for(let t=0;t<600;t++){
-  const spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/spawnMul;
-  const group=1+Math.floor(clamp(t/E.groupRampT,0,E.groupMax-1));
-  const spawnRate=group/spawnT;
-  const hpMul=(1+t*E.hpGrowth+Math.pow(t/60,2)*E.hpCurve)*foeHpMul;
+  const CH=BALANCE.chaos||{hp:1.35,dmg:1.2,spawn:1.15,reward:1.5};
+  const xpMul=(cfg.diff===2?CH.reward:1)*(cfg.vow==='greed'?1.5:1);
+  const foeHpMul=(cfg.diff===2?CH.hp:1)*(cfg.vow==='greed'?1.2:1)*cfg.foe;
+  const foeDmgMul=(cfg.diff===2?CH.dmg:1)*(cfg.vow==='greed'?1.1:1);
+  const spawnMul=(cfg.diff===2?CH.spawn:1);
+  for(let t=0;t<600;t++){
+   const ramp=clamp(t/300,0,1);
+   const CHhp=(CH.hp-0.12)+0.12*ramp,CHdmg=(CH.dmg-0.08)+0.08*ramp;
+   const foeHpMul2=(cfg.diff===2?CHhp:1)*(cfg.vow==='greed'?1.2:1)*cfg.foe;
+   const foeDmgMul2=(cfg.diff===2?CHdmg:1)*(cfg.vow==='greed'?1.1:1);
+   const spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/spawnMul;
+   const group=1+Math.floor(clamp(t/E.groupRampT,0,E.groupMax-1));
+   const spawnRate=group/spawnT;
+   const hpMul=(1+t*E.hpGrowth+Math.pow(t/60,2)*E.hpCurve)*foeHpMul2;
   const avgHp=E.blob.hp*hpMul;const hpPool=spawnRate*avgHp;
 if(t>=waveNext){waveNext+=40;waveCount++;
     if(waveCount%5===0){gold+=30*st.gold;goldEarned+=30*st.gold;backlog+=WV.count*avgHp*0.6;}}
@@ -111,7 +116,7 @@ if(level%4===0)st.dmg+=.2;
   st.armor=Math.min(E.armorCap,Math.floor(t/150)+(spells.shield?2:0)+(cfg.vow==='stone'?1:0));
   backlog=Math.max(0,backlog+hpPool-dps);
   const alive=Math.min(E.cap,backlog/avgHp);
-  const avgDmg=E.blob.dmg*(1+t/E.dmgGrowthT)*foeDmgMul;
+  const avgDmg=E.blob.dmg*(1+t/E.dmgGrowthT)*foeDmgMul2;
   const pspd=BALANCE.player.speed*st.spdMul;
   const catchF=clamp(E.blob.spd*(1+t/E.spdGrowth)/pspd,0,1)*0.35*(t<10?0.5:1);   // кайт: догоняют редко (калибровка по живому логу)
   const hitRate=alive>0.5?(1/BALANCE.player.ifr)*catchF:0;      // не чаще i-frames

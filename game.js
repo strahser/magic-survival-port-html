@@ -150,6 +150,9 @@ function mtCard(icon,name,sub,status,color){
  const cls=status==='own'?'mtOwn':status==='ready'?'mtReady':status==='lock'?'mtLock':'mtIdle';
  return `<div class="mtCard ${cls}" style="border-color:${color}55"><div class="mtIcon" style="color:${color}">${icon}</div><div class="mtName">${name}</div><div class="mtSub">${sub}</div></div>`;}
 function buildTreePane(){const k=G.key,C=CLASSES[k],unl=crossUnlocked();let h='<div class="mtree">';
+ const readyEvo=COMBOS.filter(c=>(!c.cls||c.cls===G.key)&&!G.combosAcquired.has(c.id)&&comboConditionsMet(c)).length;
+ const readySyn=SYNERGIES.filter(sy=>!synergyActive(sy)&&sy.need.every(n=>n.type==='passive'?(G.passives[n.id]||0)>=1:(G.spells[n.id]||0)>=1)).length;
+ if(readyEvo||readySyn)h+=`<div class="mtReadyBar">★ готово к слиянию: ${readyEvo} эво${readySyn?' · ~ синергий: '+readySyn:''}</div>`;
  h+=`<div class="mtSec"><span class="mtSecIcon" style="color:${C.color}">${C.icon}</span>${C.name} — основная школа</div><div class="mtRow">`;
  for(const id of C.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0,mx=d.lv.length;
   h+=mtCard(d.icon,d.name,'●'.repeat(lv)+'○'.repeat(mx-lv),lv?'own':'idle',C.color);}
@@ -471,7 +474,7 @@ function explode(x,y,r,dmg,o){o=o||{};areaDamage(x,y,r,dmg,o);fxRing(x,y,r*.25,r
 function damagePlayer(d){const p=G.player;G.lastHit='враг';if(p.ifr>0||state!=='play')return;if(G.test)return;
   if(G.shipShield>0){G.shipShield--;banner('◯ ЩИТ');sfx('zap');G.shake=Math.max(G.shake,2);return;}
  if(G.vowDmgMul)d*=G.vowDmgMul;
- if(G.diffMode===2)d*=BALANCE.chaos.dmg;
+ if(G.diffMode===2){const ramp=clamp(G.t/300,0,1);d*=(BALANCE.chaos.dmg-0.08)+0.08*ramp;}
  d=Math.max(1,Math.round(d-getArmor()));p.hp-=d;p.ifr=BALANCE.player.ifr;G.hitFlash=.4;G.shake=Math.max(G.shake,6);sfx('hurt');dmgText(p.x,p.y,d,'#ff7b7b');
  if(p.hp<=0){if(G.stats.phoenix>0){G.stats.phoenix--;p.hp=p.maxhp*.5;p.ifr=2;banner('v ФЕНИКС');G.shake=10;sfx('level');return;}p.hp=0;gameOver();}}
 function deathBurst(){const p=G.player;G.shake=12;const ch=['@','*','~','^','.',',','Ω','†'];
@@ -493,7 +496,7 @@ function winGame(){state='win';winBurst();recordRun(true);
 /* ---------- спавн ---------- */
 function spawnPos(){const p=G.player,a=rnd(0,TAU),d=Math.hypot(W,H)/2+80;return{x:clamp(p.x+Math.cos(a)*d,20,WORLD-20),y:clamp(p.y+Math.sin(a)*d,20,WORLD-20)};}
 function hpMul(){const t=G.t,E=BALANCE.enemies;let b=1+t*E.hpGrowth+Math.pow(t/60,2)*E.hpCurve;
- if(G.stats.genome)b*=.85;if(G.vowHpMul)b*=G.vowHpMul;b*=1+(G.stage||0)*.15;if(G.diffMode===2)b*=BALANCE.chaos.hp;return b*(1+((G.diff||1)-1)*E.diffHp);}
+ if(G.stats.genome)b*=.85;if(G.vowHpMul)b*=G.vowHpMul;b*=1+(G.stage||0)*.15; if(G.diffMode===2){const ramp=clamp(G.t/300,0,1);b*=(BALANCE.chaos.hp-0.12)+0.12*ramp;}return b*(1+((G.diff||1)-1)*E.diffHp);}
 function spawnEnemy(type,elite,pos){const p=pos||spawnPos(),m=hpMul(),E=BALANCE.enemies,sd=1+G.t/E.spdGrowth;let b;
  if(type==='runner')b=E.runner;else if(type==='brute')b=E.brute;else if(type==='shooter')b=E.shooter;else if(type==='healer')b=E.healer;else b=E.blob;
  const e={x:p.x,y:p.y,r:b.r,hp:b.hp*m,spd:b.spd*sd,dmg:b.dmg,xp:b.xp,goldV:b.gold,uid:uidN++,maxhp:b.hp*m,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type,elite:false,boss:false,tier:Math.min(4,Math.floor(G.t/150)+1)};
