@@ -1,5 +1,4 @@
 'use strict';
-/* ===== data.js: утилиты и базовые константы ===== */
 const TAU=Math.PI*2,WORLD=2400;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const lerp=(a,b,t)=>a+(b-a)*t;

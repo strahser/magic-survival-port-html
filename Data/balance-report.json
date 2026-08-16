@@ -1,0 +1,46 @@
+{
+  "classes": {
+    "pyro": {
+      "norma": 58,
+      "chaos": 76,
+      "survP50": 600,
+      "artifacts": 14,
+      "goldEarned": 3710,
+      "goldSpent": 3361
+    },
+    "necro": {
+      "norma": 58,
+      "chaos": 32,
+      "survP50": 600,
+      "artifacts": 10,
+      "goldEarned": 2295,
+      "goldSpent": 2151
+    },
+    "storm": {
+      "norma": 66,
+      "chaos": 51,
+      "survP50": 600,
+      "artifacts": 14,
+      "goldEarned": 3705,
+      "goldSpent": 3365
+    },
+    "arcane": {
+      "norma": 62,
+      "chaos": 32,
+      "survP50": 600,
+      "artifacts": 14,
+      "goldEarned": 3603,
+      "goldSpent": 3381
+    }
+  },
+  "overall": {
+    "norma": 61,
+    "chaos": 48
+  },
+  "autotune": {
+    "score": 64.25,
+    "hc": 0.04,
+    "dg": 500,
+    "hl": 13
+  }
+}

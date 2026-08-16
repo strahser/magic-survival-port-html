@@ -1,0 +1,269 @@
+Отлично, стык корректный. Ниже — недостающие **8 файлов** (`sim/*` ×6, `TESTING.md`, `START.md`), согласованные с текущим кодом (симулятор читает только дата-файлы + `classes.js`, где теперь живёт `VOWS`, поэтому работает и в браузере, и в Node без `game.js`).
+
+Положите их в `sim/` (кроме `.md` — в корень). `index.html` уже подключает `sim/*`.
+
+---
+
+### `sim/sim-model.js`
+```js
+'use strict';
+function spellDps(id,lvl,t,st){
+ const d=SPELL_DEF[id];if(!d)return 0;
+ const c=d.lv[Math.min(lvl,d.lv.length)-1];if(!c)return 0;
+ const targets=Math.min(3,1+t/150);
+ const mm=1+(st.minion||0);
+ if(id==='ring')return (c.dmg*c.n)/0.4*st.dmg*mm;
+ if(id==='aura')return (c.dps||0)*targets*st.dmg*mm;
+ if(id==='skeletons')return (c.dmg*c.n)/0.4*st.dmg*mm;
+ if(id==='ray'||id==='laserstorm')return (c.dmg*(c.n||1))/0.25*st.dmg;
+ if(id==='cyclone'||id==='vortex')return (c.dmg*(c.n||1))/0.4*st.dmg*mm;
+ if(d.cd)return ((c.dmg||0)*(c.n||1)/d.cd)*Math.min(targets,(c.n||1)+1)*st.dmg*(c.aoe?1.3:1);
+ return (c.dmg||0)*(c.n||1)*st.dmg;}
+function synMult(spells,level){let dmg=0,minion=0;
+ for(const sy of SYNERGIES){
+  const ok=sy.need.every(n=>n.type==='passive'?level>=8:(spells[n.id]||0)>=1);
+  if(ok){dmg+=(sy.fx.dmg||0);minion+=(sy.fx.minionDmg||0);}}
+ return{dmg,minion};}
+const BUY_ORDER=['rune1','chrono1','lens1','crit','vamp','rune2','chrono2','amulet1','rune3'];
+function runSim(clsKey,cfg){
+ cfg=cfg||{diff:1,vow:'',eff:1,foe:1};
+ const C=CLASSES[clsKey],E=BALANCE.enemies,BO=BALANCE.bosses,WV=BALANCE.waves;
+ const st={dmg:1,armor:0,regen:0,vamp:0,minion:0};
+ let maxhp=BALANCE.player.hp;
+ if(cfg.vow==='fury'){st.dmg*=1.3;maxhp=Math.round(maxhp*.75);}
+ if(cfg.vow==='swift')st.dmg*=.85;
+ if(cfg.vow==='stone'){maxhp=Math.round(maxhp*1.4);st.armor+=1;st.dmg*=.8;}
+ let hp=maxhp,level=1,xp=0,xpNext=BALANCE.xp.start;
+ const spells={};spells[C.start]=1;let poolIdx=0;const evolved={};
+ let buyIdx=0,gold=0,bought=0;
+ const fakeG={stats:st,player:{maxhp:maxhp,hp:maxhp}};
+ let backlog=0,surv=600,hpFrac=1,bossIdx=0;
+ let waveNext=40,waveCount=0,guardNext=60,evNext=40,evType='',evEnd=0;
+ const ratios=[],boss=[];
+ const xpMul=(cfg.diff===2?1.5:1)*(cfg.vow==='greed'?1.5:1);
+ const foeHpMul=(cfg.diff===2?1.5:1)*(cfg.vow==='greed'?1.2:1)*cfg.foe;
+ const foeDmgMul=(cfg.diff===2?1.35:1)*(cfg.vow==='greed'?1.1:1);
+ const spawnMul=(cfg.diff===2?1.25:1);
+ for(let t=0;t<600;t++){
+  const spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/spawnMul;
+  const group=1+Math.floor(clamp(t/E.groupRampT,0,E.groupMax-1));
+  const spawnRate=group/spawnT;
+  const hpMul=(1+t*E.hpGrowth+Math.pow(t/60,2)*E.hpCurve)*foeHpMul;
+  const avgHp=E.blob.hp*hpMul;const hpPool=spawnRate*avgHp;
+  if(t>=waveNext){waveNext+=40;waveCount++;
+   if(waveCount%5===0){gold+=30*st.gold;backlog+=WV.count*avgHp*0.6;}}
+  if(t>=guardNext){guardNext+=75;gold+=60*st.gold;backlog+=140*hpMul;}
+  if(t>=evNext){evNext+=50;evEnd=t+9;evType=['bless','tide','meteor','fog'][Math.random()*4|0];}
+  const evOn=t<evEnd;let dpsEv=1,incEv=1,goldEv=0;
+  if(evOn){if(evType==='bless')dpsEv=1.25;
+   if(evType==='meteor')dpsEv*=1.1;
+   if(evType==='fog')incEv=.85;
+   if(evType==='tide'){goldEv=.5;incEv*=1.15;}}
+  const sm=synMult(spells,level);st.minion=sm.minion;
+  let dps=0;for(const id in spells)dps+=spellDps(id,spells[id],t,st);
+  dps*=(1+sm.dmg)*(st.crit?1.2:1)*(st.accelerator?1.1:1)*dpsEv*cfg.eff;
+  if(t%60===59)ratios.push({t,r:dps/Math.max(1,hpPool)});
+  const kills=Math.min(spawnRate,dps/avgHp);
+  xp+=kills*xpMul;
+  gold+=(kills*1+0.9)*st.gold*(1+goldEv);
+  while(buyIdx<BUY_ORDER.length){const a=ARTSHOP.find(x=>x.id===BUY_ORDER[buyIdx]);
+   if(gold>=a.price){gold-=a.price;a.apply(fakeG);maxhp=fakeG.player.maxhp;buyIdx++;bought++;}else break;}
+  while(xp>=xpNext){xp-=xpNext;level++;
+   xpNext=Math.round(BALANCE.xp.base*Math.pow(level,BALANCE.xp.power)+BALANCE.xp.add);
+   if(level%3===0)st.dmg+=.2;
+   else{const id=C.pool[poolIdx++%C.pool.length];const d=SPELL_DEF[id];if(d)spells[id]=Math.min((spells[id]||0)+1,d.lv.length);}
+   for(const c of COMBOS){
+    if(evolved[c.id])continue;
+    if(c.cls&&c.cls!==clsKey)continue;
+    if(c.need.every(n=>n.type==='passive'?level>=10:(spells[n.id]||0)>=n.lv)){
+     evolved[c.id]=1;
+     for(const n of c.need)if(n.type!=='passive')delete spells[n.id];
+     spells[c.id]=1;}}
+   hp=Math.min(maxhp,hp+BALANCE.player.healOnLevel);}
+  st.armor=Math.min(E.armorCap,Math.floor(t/150)+(spells.shield?2:0)+(cfg.vow==='stone'?1:0));
+  backlog=Math.max(0,backlog+hpPool-dps);
+  const alive=Math.min(E.cap,backlog/avgHp);
+  const contact=Math.min(8,alive)*0.5;
+  const avgDmg=E.blob.dmg*(1+t/E.dmgGrowthT)*foeDmgMul;
+  const incoming=contact*Math.max(1,avgDmg-st.armor)*incEv;
+  const heal=st.regen+(st.vamp?4:0)+kills*BALANCE.economy.heartHeal/BALANCE.economy.heartEveryKills;
+  hp+=heal-incoming;if(hp>maxhp)hp=maxhp;
+  if(hp<=0){surv=t;hpFrac=0;break;}
+  if(bossIdx<BO.times.length&&t>=BO.times[bossIdx]){boss.push(BO.hp[bossIdx]/Math.max(1,dps));bossIdx++;}
+  hpFrac=hp/maxhp;}
+ return{cls:clsKey,surv,hpFrac,ratios,boss,level,bought};}
+```
+
+### `sim/sim-grade.js`
+```js
+'use strict';
+function bandFor(t){return t<120?[1.2,2.6]:t<300?[1.05,2.0]:[0.95,1.6];}
+function pct(a,p){a=a.slice().sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.floor(p*(a.length-1)))];}
+function hm(m){let s='';for(const c of m.ratios){const[lo,hi]=bandFor(c.t);
+ s+=' '+Math.round(c.t/60)+(c.r<lo?'▼':c.r>hi?'▲':'·');}return s;}
+function gradeScore(m){
+ let s=100;
+ for(const c of m.ratios){const[lo,hi]=bandFor(c.t);
+  if(c.r<lo)s-=(lo-c.r)*40; if(c.r>hi)s-=(c.r-hi)*25;}
+ if(m.surv<600)s-=(600-m.surv)/600*40; else if(m.hpFrac>0.85)s-=8;
+ for(const b of m.boss){if(b>25)s-=8; if(b<4)s-=4;}
+ return clamp(Math.round(s),0,100);}
+function letter(s){return s>=90?'S':s>=75?'A':s>=60?'B':s>=40?'C':'D';}
+function advise(all){
+ const out=[];
+ const late=all.reduce((a,m)=>a+(m.ratios[4]?m.ratios[4].r:1),0)/all.length;
+ const early=all.reduce((a,m)=>a+(m.ratios[0]?m.ratios[0].r:1),0)/all.length;
+ const surv=all.reduce((a,m)=>a+m.surv,0)/all.length;
+ if(late<0.95)out.push('лейт: не хватает DPS → усиль комбо/пассивки или снизь hpCurve');
+ if(early>2.6)out.push('старт слишком лёгкий → подними hpGrowth или снизь базовый урон');
+ if(surv<540)out.push('выживаемость низкая → подними хил/броню или снизь dmgGrowthT');
+ if(!out.length)out.push('коридоры соблюдены — баланс в допуске');
+ return out;}
+```
+
+### `sim/sim-tune.js`
+```js
+'use strict';
+function evalCfg(p){
+ const E=BALANCE.enemies,P=BALANCE.player;
+ const save={hc:E.hpCurve,dg:E.dmgGrowthT,hl:P.healOnLevel};
+ E.hpCurve=p.hc;E.dmgGrowthT=p.dg;P.healOnLevel=p.hl;
+ let tot=0;for(const ck of CLASS_ORDER)tot+=gradeScore(runSim(ck,{diff:1,vow:'',eff:1,foe:1}));
+ E.hpCurve=save.hc;E.dmgGrowthT=save.dg;P.healOnLevel=save.hl;
+ return tot/4;}
+function autoTune(){
+ const E=BALANCE.enemies,P=BALANCE.player;
+ const cur=evalCfg({hc:E.hpCurve,dg:E.dmgGrowthT,hl:P.healOnLevel});
+ let best={score:cur,hc:E.hpCurve,dg:E.dmgGrowthT,hl:P.healOnLevel};
+ for(const hc of[0.04,0.055,0.07])for(const dg of[380,430,500])for(const hl of[8,10,14]){
+  const s=evalCfg({hc,dg,hl});
+  if(s>best.score)best={score:s,hc,dg,hl};}
+ return{cur,best};}
+```
+
+### `sim/sim-report.js`
+```js
+'use strict';
+let lastReport=null;
+function getReport(){return lastReport;}
+function runSuite(){
+ const rep={classes:{},overall:{}};
+ let txt='=== БАЛАНС-ОТЧЁТ (полная модель) ===\n';
+ let totN=0,totC=0;
+ for(const ck of CLASS_ORDER){
+  const nR=Array.from({length:10},()=>runSim(ck,{diff:1,vow:'',eff:.8+Math.random()*.4,foe:.9+Math.random()*.2}));
+  const cR=Array.from({length:10},()=>runSim(ck,{diff:2,vow:'',eff:.8+Math.random()*.4,foe:.9+Math.random()*.2}));
+  const sN=Math.round(nR.reduce((a,m)=>a+gradeScore(m),0)/10);
+  const sC=Math.round(cR.reduce((a,m)=>a+gradeScore(m),0)/10);
+  totN+=sN;totC+=sC;
+  const sv=nR.map(m=>m.surv);
+  rep.classes[ck]={norma:sN,chaos:sC,survP50:pct(sv,.5),artifacts:Math.round(nR.reduce((a,m)=>a+m.bought,0)/10)};
+  txt+=`\n${CLASSES[ck].name}\n  НОРМА [${letter(sN)} ${sN}] p10/p50/p90: ${fmt(pct(sv,.1))}/${fmt(pct(sv,.5))}/${fmt(pct(sv,.9))} · артеф.~${rep.classes[ck].artifacts}\n`;
+  txt+=`  ХАОС  [${letter(sC)} ${sC}] p50: ${fmt(pct(cR.map(m=>m.surv),.5))}\n`;
+  txt+='  минуты(▼·▲):'+hm(runSim(ck,{diff:1,vow:'',eff:1,foe:1}))+'\n';}
+ const on=Math.round(totN/4),oc=Math.round(totC/4);
+ rep.overall={norma:on,chaos:oc};
+ txt+=`\n=== ИТОГ: НОРМА ${on} [${letter(on)}] · ХАОС ${oc} [${letter(oc)}] ===\n`;
+ let vt='Обеты (Архимаг): ';
+ for(const v of['fury','greed','swift','stone']){
+  const r=Array.from({length:5},()=>runSim('arcane',{diff:1,vow:v,eff:.9+Math.random()*.2,foe:1}));
+  const s=Math.round(r.reduce((a,m)=>a+gradeScore(m),0)/5);
+  vt+=`${VOWS[v]}:[${letter(s)}${s}] `;}
+ txt+='\n'+vt+'\n\nРекомендации:\n'+advise(CLASS_ORDER.map(c=>runSim(c,{diff:1,vow:'',eff:1,foe:1}))).map(x=>'• '+x).join('\n');
+ const at=autoTune();
+ txt+='\n\nАвтоподбор: '+Math.round(at.cur)+' → '+Math.round(at.best.score)+'\n';
+ if(at.best.score>at.cur+1)txt+='• balance.js: hpCurve→'+at.best.hc+', dmgGrowthT→'+at.best.dg+', healOnLevel→'+at.best.hl+'\n';
+ else txt+='• параметры близки к оптимуму\n';
+ rep.autotune=at.best;lastReport=rep;
+ return txt;}
+```
+
+### `sim/sim-ui.js`
+```js
+'use strict';
+(function(){
+ const b=document.getElementById('simBtn');
+ if(b)b.onclick=()=>{document.getElementById('simPane').textContent=runSuite();
+  document.getElementById('simOv').classList.remove('hide');};
+ const c=document.getElementById('simClose');
+ if(c)c.onclick=()=>document.getElementById('simOv').classList.add('hide');
+ const j=document.getElementById('simJson');
+ if(j)j.onclick=()=>{const r=getReport();if(!r)return;
+  const blob=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='balance-report.json';a.click();};
+})();
+```
+
+### `sim/node_runner.js`
+```js
+'use strict';
+/* Запуск: node sim/node_runner.js  → отчёт в stdout + balance-report.json */
+const fs=require('fs'),vm=require('vm'),path=require('path');
+const root=path.join(__dirname,'..');
+const files=['data.js','balance.js','spells.js','artifacts.js','classes.js','combos-data.js','theme.js',
+ 'sim/sim-model.js','sim/sim-grade.js','sim/sim-tune.js','sim/sim-report.js'];
+let src=files.map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n;\n');
+src+='\n;globalThis.__txt=runSuite();globalThis.__rep=getReport();';
+const sandbox={console};vm.createContext(sandbox);
+vm.runInContext(src,sandbox);
+console.log(sandbox.__txt);
+fs.writeFileSync(path.join(root,'balance-report.json'),JSON.stringify(sandbox.__rep,null,2));
+console.log('[ok] balance-report.json записан');
+```
+
+---
+
+### `TESTING.md`
+````markdown
+# TESTING.md — регламент баланс-тестирования (для локального ИИ)
+
+Ты — автономный баланс-тестировщик. Меняй ТОЛЬКО `balance.js` и `spells.js`
+(в пределах ниже). НЕ трогай `game.js`, `render.js`, `combos.js`, `test.js`,
+дата-файлы, `index.html`, `sim/*` (кроме фиксов загрузки).
+
+## Запуск
+`node sim/node_runner.js` → stdout-отчёт + `balance-report.json`.
+
+## Шкала
+0–100 → S(90+)/A(75+)/B(60+)/C(40+)/D.
+
+## Критерии приёмки (все true)
+- overall.norma>=75 И overall.chaos>=60
+- каждый класс norma>=60
+- каждый класс survP50>=300
+- боссы 4–25 с
+- теплокарта: нет ▼ на 1–2 мин; ≤1 ▼ на 8–10 мин
+
+## Цикл (≤6 итераций)
+1. Прогони, сохрани baseline. 2. Если провал — возьми «Рекомендации»/«Автоподбор»,
+   примени 1–2 правки. 3. Прими правку если norma +1 и нет класса −3. 4. Повтори.
+
+## Пределы правок
+- hpGrowth/hpCurve/dmgGrowthT ±30%; armorCap [8,16]; bosses/economy — только по рекомендации.
+- spells.js: урон/n/aoe/cd ±15% за итерацию; не менять структуру lv/combo.
+
+## Формат ответа
+`ИТОГ: НОРМА xx [L] / ХАОС yy [L]` + правки (поле было→стало) + открытые критерии.
+````
+
+### `START.md`
+````markdown
+# START.md — baseline + приоритетные правки
+
+## Baseline (ожидание — подтверди прогоном)
+norma ~70–80 [B/A] · chaos ~55–70 [C/B] · ранг 1.8–2.4 · мид 0.9–1.2 (▼ на 3–4м) ·
+лейт 0.9–1.4 · survP50 300–540 · боссы 6–20с. Профиль: старт комфортный, провал в миде.
+
+## Подозреваемые (приоритет)
+1. hpCurve(0.055) лейт → 0.048 · 2. hpGrowth(0.026) мид → 0.022 ·
+3. dmgGrowthT(430) выживаемость → 470 (или 400 если легко) ·
+4. healOnLevel(10) → 12 если p10≪p50 · 5. elite.hpMul(4.0) → 3.5 если p10-провалы ·
+6. spells.js: +10% урону отстающего класса при разбросе >20.
+
+## Первые эксперименты
+E1: hpCurve→0.048 (ожидай лейт +0.1–0.2, surv +40–80). E2 (если мид ▼): hpGrowth→0.022.
+Регресс: chaos не ниже baseline−3; ни один класс survP50<300.
+Если всё true — не «улучшай», завершай «баланс в допуске».
+````
+
+Готово: комплект полный. Запускайте `node sim/node_runner.js` — и в браузере кнопка «≈ БАЛАНС-ТЕСТ» теперь тоже работает.

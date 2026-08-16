@@ -1,45 +1,22 @@
 'use strict';
-/* ============================================================
-   balance.js — все ЧИСЛА баланса. Правьте и перезагружайте.
-   ============================================================ */
 const BALANCE={
- player:{
-  hp:100,speed:175,regen:0,ifr:0.55,
-  healOnLevel:8,healOnEvolution:30,
-  vampCapPerSec:4,        // предел вампиризма, HP/сек
- },
+ player:{hp:110,speed:190,regen:0,ifr:.8,healOnLevel:15,healOnEvolution:30,vampCapPerSec:2},
  xp:{base:6,power:1.4,add:4,start:10},
  enemies:{
-  blob:{hp:11,spd:64,dmg:9,xp:1,gold:1,r:12},
-  runner:{hp:7,spd:122,dmg:7,xp:1,gold:1,r:9},
-  brute:{hp:40,spd:42,dmg:15,xp:3,gold:3,r:20},
-  elite:{hpMul:4.5,dmgMul:1.6,rMul:1.35,xp:6,gold:8},
-  hpGrowth:0.032,hpCurve:0.09,
-  dmgGrowthT:560,spdGrowth:800,
-  spawnStart:0.95,spawnEnd:0.26,spawnRampT:480,
-  groupMax:4,groupRampT:120,
-  eliteEvery:20,eliteMinEvery:8,eliteStartT:120,
-  cap:320,
-  startRing:14,startDistMin:330,startDistMax:540,
-  diffHp:0.35,diffDmg:0.12,diffSpawn:0.20,diffElite:1.5,
- },
- waves:{every:40,count:18,hp:8,dmg:9,spd:82},
- bosses:{times:[100,210,320,430],hp:[520,1200,2400,4000],dmg:24,spd:48,projDmg:12,shootEvery:2.6,projCountBase:8},
- towers:{hp:180,gold:45,heal:30,xp:10,projDmg:13,shootEvery:2.2,projCount:6},
- economy:{
-  heartEveryKills:30,heartHeal:12,heartMagnet:260,
- },
- chests:{
-  everyMin:45,everyMax:65,   // период появления
-  maxOnField:2,
-  goldenChance:0.25,         // шанс золотого сундука (артефакт)
-  goldMin:30,goldPerMin:0.1, // золото обычного: goldMin + t*goldPerMin
-  goldenGold:120,            // компенсация, если артефакты кончились
- },
- pets:{
-  levels:[10,15,20],
-  baseDmg:8,perLevel:0.7,
-  meleeSpeed:215,rangedSpeed:195,
-  shootCd:1.0,shootRange:320,
- },
-};
+  blob:{hp:19,spd:60,dmg:12,xp:1,gold:1,r:12},
+  runner:{hp:10,spd:110,dmg:9,xp:1,gold:1,r:9},
+  brute:{hp:60,spd:40,dmg:22,xp:3,gold:3,r:20},
+  shooter:{hp:20,spd:70,dmg:14,xp:2,gold:2,r:11},
+  healer:{hp:22,spd:56,dmg:8,xp:3,gold:3,r:11},
+  elite:{hpMul:3.5,dmgMul:1.4,rMul:1.3,xp:6,gold:8},
+  hpGrowth:.04,hpCurve:.05,dmgGrowthT:500,armorCap:12,spdGrowth:900,
+  spawnStart:.7,spawnEnd:.45,spawnRampT:480,groupMax:2,groupRampT:150,
+  eliteEvery:20,eliteMinEvery:8,eliteStartT:120,cap:120,
+  startRing:10,startDistMin:330,startDistMax:540,
+  diffHp:.35,diffDmg:.12,diffSpawn:.2,diffElite:1.5},
+ waves:{every:32,count:12,hp:10,dmg:12,spd:80},
+ bosses:{times:[70,180,300,430],hp:[450,1100,2200,3600],dmg:24,spd:46,projDmg:18,shootEvery:3.2,projCountBase:5},
+ towers:{hp:180,gold:45,heal:30,xp:10,projDmg:8,shootEvery:3,projCount:3},
+ economy:{heartEveryKills:26,heartHeal:14,heartMagnet:260},
+ pets:{levels:[10,15,20],baseDmg:8,perLevel:.7,meleeSpeed:215,rangedSpeed:195,shootCd:1,shootRange:320},
+ chests:{everyMin:35,everyMax:55,goldenChance:.25,goldMin:20,goldPerMin:1.2,maxOnField:2,goldenGold:120}};

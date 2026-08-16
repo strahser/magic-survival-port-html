@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><title>Экспорт ms_log</title>
+<style>body{background:#1a1f2e;color:#dfe6f0;font:16px monospace;padding:20px;max-width:900px;margin:0 auto}
+h1{font-size:20px}pre{white-space:pre-wrap;background:#0f1420;padding:12px;border-radius:6px;max-height:60vh;overflow:auto}
+button{font:inherit;padding:8px 14px;cursor:pointer}</style></head><body>
+<h1>Логи забегов (localStorage ms_log)</h1>
+<p id="st">Чтение…</p><pre id="out"></pre>
+<script>
+const raw=localStorage.getItem('ms_log');
+const out=document.getElementById('out'),st=document.getElementById('st');
+if(!raw){st.textContent='Логов нет в этом браузере/origin.';out.textContent='—';}
+else{
+ let logs;try{logs=JSON.parse(raw);}catch(e){logs=[];}
+ st.textContent='Найдено забегов: '+logs.length+(logs.length?' · отправляю на сервер…':'');
+ out.textContent=JSON.stringify(logs,null,1);
+ if(logs.length){fetch('/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logs.slice(-1)[0])}).then(r=>r.text()).then(()=>{st.textContent='Последний забег отправлен в Data\\run-log.json. Обновите страницу для проверки.';}).catch(e=>{st.textContent='Ошибка отправки: '+e;});}
+}
+</script></body></html>
