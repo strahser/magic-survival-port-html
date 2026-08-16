@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const cv=$('cv'),ctx=cv.getContext('2d');let W=0,H=0,DPR=1;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
 addEventListener('resize',resize);resize();
@@ -60,12 +60,13 @@ function startGame(key,test,daily){const C=CLASSES[key],P=BALANCE.player,E=BALAN
   runBosses:0,runCrafts:0,runT2:0,achNewly:[],waveCount:0,vowSpdMul:1,
   actIntroT:0,lastAct:-1,noiseT:0,invertT:0,settings:loadSet(),
   stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,beamFx:0,prep:0,bossArena:null,synShown:new Set(),synCard:null,interT:0,jumps:0,boost:{rate:0,spread:0},shipShield:0,boosts:[],spiralT:0,
+  htree:new Set(),sparks:0,hbuff:{rate:0,pierce:0,dmg:0,barrels:0,hull:0,magnet:1,healOnGlyph:0},treeOpts:[],
   track:{dmg:0,crits:0,hearts:0,chests:0,gold:0,evos:0},log:[],milestones:{},telemetry:[],logT:0,lastHit:'',
   cam:{x:WORLD/2,y:WORLD/2},bossRef:null,
   dust:Array.from({length:70},()=>({x:rnd(0,WORLD),y:rnd(0,WORLD),r:rnd(.8,2),ph:rnd(0,TAU)})),
   deco:Array.from({length:6},(_,i)=>({x:rnd(200,WORLD-200),y:rnd(200,WORLD-200),r:rnd(90,190),s:rnd(.02,.07)*(i%2?1:-1)}))};
  G.spells[C.start]=1;
- G.vow=vowUse;G.vowHpMul=1;G.vowDmgMul=1;
+ G.vow=vowUse;G.vowHpMul=1;G.vowDmgMul=1;applyHbuff();
  if(G.vow==='fury')G.player.maxhp=Math.round(G.player.maxhp*.75);
  if(G.vow==='greed'){G.vowHpMul=1.2;G.vowDmgMul=1.1;}
  if(G.vow==='stone')G.player.maxhp=Math.round(G.player.maxhp*1.4);
@@ -252,6 +253,13 @@ function shootMods(){const SH=BALANCE.shooter,v=G.vow||'',ch=G.diffMode===2;
   spd:v==='swift'?SH.vowSwiftSpd:1,
   drop:(v==='greed'?SH.vowGreedDrop:1)*(ch?SH.chaosDrop:1),
   hp:ch?SH.chaosHp:1,edmg:ch?SH.chaosDmg:1,spawn:ch?SH.chaosSpawn:1};}
+function nextTreeNode(br){const ns=BALANCE.shooter.tree.nodes[br];for(const n of ns)if(!G.htree.has(n.id))return n;return null;}
+function applyHbuff(){const T=BALANCE.shooter.tree.nodes,b={rate:0,pierce:0,dmg:0,barrels:0,hull:0,magnet:1,healOnGlyph:0};
+ for(const br in T)for(const n of T[br])if(G.htree.has(n.id)){const f=n.fx;
+  b.rate+=f.rate||0;b.pierce+=f.pierce||0;b.dmg+=f.dmg||0;b.barrels+=f.barrels||0;b.hull+=f.hull||0;b.magnet*=(f.magnet||1);b.healOnGlyph+=f.healOnGlyph||0;}
+ G.hbuff=b;}
+function boostName(t){return t===0?'▲▲ Скорострельность':t===1?'≡ Веер':'◯ Щит';}
+function boostColor(t){return t===0?'#ff9a3d':t===1?'#7ee8fa':'#8ce99a';}
 function spawnBoost(x,y){G.boosts.push({x,y,t:0,ty:Math.floor(Math.random()*3)});}
 function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
   G.ebullets=[];G.bullets=[];
@@ -259,13 +267,25 @@ function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
   G.shoot={dist:0,goal:SH.goal,t:0,warp:SH.warp,mid:false,kills:0,drops:0,guard:null};G.travT=0;G.autoT=0;
   G.boost={rate:0,spread:0};G.shipShield=0;G.boosts=[];G.spiralT=0;
   if((G.vow||'')==='stone')G.shipShield=(G.shipShield||0)+SH.vowStoneShield;
+  G.shipShield=(G.shipShield||0)+(G.hbuff.hull||0);
   const tags=[];if(G.vow)tags.push(VOWS[G.vow]);if(G.diffMode===2)tags.push('ХАОС');
   banner('→ ГИПЕРПРЫЖОК'+(tags.length?' · '+tags.join(' · '):''));sfx('time');}
  function endShooter(){const k=G.shoot?G.shoot.kills:0;G.jumps=(G.jumps||0)+1;
-  G.mode='play';G.shoot=null;G.enemies=[];G.ebullets=[];G.bullets=[];G.boosts=[];
+  const sh=G.shoot;G.mode='play';G.shoot=null;G.enemies=[];G.ebullets=[];G.bullets=[];G.boosts=[];
   G.player.x=WORLD/2;G.player.y=WORLD/2;G.cam.x=WORLD/2;G.cam.y=WORLD/2;G.interT=1.6;
-  banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ · прыжок: '+k+' уб.');sfx('level');
-  if(G.telemetry)G.telemetry.push({jump:true,kills:k,stage:G.stage});}
+  banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ · прыжок: '+k+' уб. · ⚡'+G.sparks);sfx('level');
+  if(G.telemetry)G.telemetry.push({jump:true,kills:k,stage:G.stage,sparks:G.sparks,guard:!!(sh&&sh.guardKilled)});
+  openTreeChoice();}
+ function openTreeChoice(){const opts=[];for(const br of['fire','spread','guard']){const n=nextTreeNode(br);if(n&&G.sparks>=n.cost)opts.push(n);}
+  if(!opts.length)return;
+  G.treeOpts=opts;state='tree';renderTree();$('treeOv').classList.remove('hide');}
+ function renderTree(){$('treeSparks').textContent='⚡ Искры: '+G.sparks;
+  const box=$('treeItems');box.innerHTML='';
+  for(const n of G.treeOpts){const el=document.createElement('div');el.className='shopItem';
+   el.innerHTML=`<div class="siIcon">${n.icon}</div><div class="siName">${n.name}</div><div class="siDesc">${n.desc}</div><button class="buyBtn">⚡${n.cost}</button>`;
+   el.querySelector('.buyBtn').onclick=()=>{if(G.sparks<n.cost)return;G.sparks-=n.cost;G.htree.add(n.id);applyHbuff();sfx('buy');closeTreeChoice();};
+   box.appendChild(el);}}
+ function closeTreeChoice(){$('treeOv').classList.add('hide');G.treeOpts=[];if(state==='tree')state='play';}
  function spawnShooterEnemy(){const p=G.player,SH=BALANCE.shooter,ph=G.shoot?clamp(G.shoot.dist/G.shoot.goal,0,1):0,M=shootMods();
   const r=Math.random();let type,mode;
   if(r<.28){type='blob';mode='straight';}
@@ -278,7 +298,7 @@ function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
   const e={x,y,r:b.r,hp:b.hp*hpMul()*stg*M.hp,maxhp:b.hp*hpMul()*stg*M.hp,spd:0,dmg:b.dmg*(1+G.stage*SH.stageDmg)*M.edmg,xp:b.xp,goldV:b.gold,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type,elite:false,boss:false,sh:true,shMode:mode,shV:rnd(90,180)+ph*70,shA:rnd(30,100),shF:rnd(1.2,2.6),shPh:rnd(0,TAU),shootT:rnd(1,2),tier:Math.min(4,G.stage+1)};
   if(mode==='dive')e.shV*=1.3;
   G.enemies.push(e);}
-function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shootMods();
+function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shootMods(),hb=G.hbuff;
   if(!G.shoot)return;
   G.shoot.t+=dt;
   if(G.shoot.warp>0){G.shoot.warp-=dt;G.shake=2;}
@@ -297,24 +317,30 @@ function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shoot
    let ang=-Math.PI/2;
    if(tgt)ang=Math.atan2(tgt.y-p.y,tgt.x-p.x);
    G.autoT-=dt;
- if(G.autoT<=0){G.autoT=.17*M.rate;const dmg=(SH.autoDmg+G.stage*8)*s.dmg*M.dmg;
-      G.bullets.push({x:p.x,y:p.y-22,vx:Math.cos(ang)*520,vy:Math.sin(ang)*520,r:6,kind:'pierce',elem:'^',dmg,pierce:4,life:1.9,hit:new Set(),col:'#fff'});
+ if(G.autoT<=0){G.autoT=.17*M.rate*(1-hb.rate);const baseDmg=(SH.autoDmg+G.stage*8)*s.dmg*M.dmg*(1+hb.dmg);
+      const focus=tgt===G.shoot.guard;
+      const dmg=focus?baseDmg*2:baseDmg;
+      const pierce=(focus?99:2)+hb.pierce;
+      G.bullets.push({x:p.x,y:p.y-22,vx:Math.cos(ang)*520,vy:Math.sin(ang)*520,r:6,kind:'pierce',elem:'^',dmg,pierce,life:1.9,hit:new Set(),col:focus?'#ffe08a':'#fff'});
       if(G.boost.spread>0){for(let off=-1;off<=1;off+=2){const aa=ang+off*.26;
        G.bullets.push({x:p.x-14*off,y:p.y-14,vx:Math.cos(aa)*480,vy:Math.sin(aa)*480,r:4,kind:'pierce',elem:'^',dmg:dmg*.55,pierce:1,life:1.5,hit:new Set(),col:'#ffd166'});}}
       const ex=G.stats.raysBonus+(G.spells.ray?SPELL_DEF.ray.lv[G.spells.ray-1].n:0);
-      if(ex>0){for(let off=-1;off<=1;off+=2){const aa=ang+off*.14;
-       G.bullets.push({x:p.x-16*off,y:p.y-12,vx:Math.cos(aa)*480,vy:Math.sin(aa)*480,r:5,kind:'pierce',elem:'^',dmg:dmg*.7,pierce:2,life:1.7,hit:new Set(),col:'#9fd8ff'});}}}
+      const sideN=(ex>0?2:0)+hb.barrels;
+      for(let i=0;i<sideN;i++){const off=(i-(sideN-1)/2)*.22;
+       G.bullets.push({x:p.x,y:p.y-12,vx:Math.sin(off)*520,vy:-Math.cos(off)*520,r:4,kind:'pierce',elem:'^',dmg:dmg*.7,pierce:1+hb.pierce,life:1.4,hit:new Set(),col:'#9fd8ff'});}}
     G.spiralT-=dt;
     if(ph>=SH.spiralAt&&G.spiralT<=0){G.spiralT=.22;const sd=(SH.autoDmg+G.stage*8)*s.dmg*.6*M.dmg,rot=G.shoot.t*6;
      for(const so of[-1,1]){const aa=ang+so*rot;
       G.bullets.push({x:p.x,y:p.y-22,vx:Math.cos(aa)*500,vy:Math.sin(aa)*500,r:5,kind:'pierce',elem:'^',dmg:sd,pierce:2,life:1.7,hit:new Set(),col:'#7ee8fa'});}}
     if(!G.shoot.sent&&ph>=SH.bossAt){G.shoot.sent=true;const b=BALANCE.enemies.brute;
-     const e={x:p.x+rnd(-120,120),y:p.y-190,r:b.r*1.6,hp:b.hp*hpMul()*1.8*M.hp,maxhp:b.hp*hpMul()*1.8*M.hp,spd:0,dmg:b.dmg,xp:12,goldV:0,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'brute',elite:true,boss:false,sh:true,sent:true,shMode:'hover',shV:70,shA:90,shF:1.4,shPh:0,shootT:1,tier:4};
+     const chg=(G.diffMode===2?BALANCE.shooter.chaosGuard:1);
+     const e={x:p.x+rnd(-120,120),y:p.y-190,r:b.r*1.6,hp:b.hp*hpMul()*1.8*chg,maxhp:b.hp*hpMul()*1.8*chg,spd:0,dmg:b.dmg,xp:12,goldV:0,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'brute',elite:true,boss:false,sh:true,sent:true,shMode:'hover',shV:70,shA:90,shF:1.4,shPh:0,shootT:1,tier:4};
      G.enemies.push(e);G.shoot.guard=e;banner('☠ ГИПЕРСТРАЖ');}
     for(let bi=G.boosts.length-1;bi>=0;bi--){const bo=G.boosts[bi];bo.t+=dt;
      const bd=Math.hypot(bo.x-p.x,bo.y-p.y);
-     if(bd<SH.magnetR){const ba=Math.atan2(p.y-bo.y,p.x-bo.x);bo.x+=Math.cos(ba)*260*dt;bo.y+=Math.sin(ba)*260*dt;}
-     if(bd<SH.pickupR){applyBoost(bo.ty);G.boosts.splice(bi,1);}}
+     if(bd<SH.magnetR*(G.hbuff.magnet||1)){const ba=Math.atan2(p.y-bo.y,p.x-bo.x);bo.x+=Math.cos(ba)*260*dt;bo.y+=Math.sin(ba)*260*dt;}
+     if(bd<SH.pickupR){if(G.hbuff.healOnGlyph)G.player.hp=Math.min(G.player.maxhp,G.player.hp+G.hbuff.healOnGlyph);
+      dmgText(p.x,p.y-30,boostName(bo.ty),boostColor(bo.ty));applyBoost(bo.ty);G.boosts.splice(bi,1);}}
     G.boost.rate=Math.max(0,G.boost.rate-dt);G.boost.spread=Math.max(0,G.boost.spread-dt);
     if(G.shoot.dist>=G.shoot.goal)endShooter();}}
 function applyBoost(ty){const D=BALANCE.shooter.boostDur;
@@ -392,8 +418,9 @@ function dealDamage(e,dmg,o){o=o||{};if(e.dead)return;
  e.flash=.09;if(dmg>=10||G.texts.length<35)dmgText(e.x,e.y,(o.elem||'')+Math.round(dmg));
  if(e.hp<=0)kill(e,o.src);}
 function kill(e,src){if(e.dead)return;e.dead=true;G.kills++;
-  if(G.mode==='shooter'&&G.shoot)G.shoot.kills++;
   if(G.mode==='shooter'&&G.shoot){const ph=G.shoot.dist/G.shoot.goal,M=shootMods();
+   G.shoot.kills++;G.sparks=(G.sparks||0)+BALANCE.shooter.tree.sparkPerKill;
+   if(e===G.shoot.guard){G.sparks+=BALANCE.shooter.tree.sparkGuard;G.shoot.guardKilled=true;}
    if(e.sh&&!e.sent){const pity=ph>=.7&&G.shoot.drops===0;
     if(pity||Math.random()<BALANCE.shooter.dropChance*M.drop){G.shoot.drops++;spawnBoost(e.x,e.y);}}}
   if(e.sent){const chG=G.diffMode===2?40:0;addGold(80+chG);spawnBoost(e.x,e.y);banner('☠ СТРАЖ ПАЛ: +$'+(80+chG));}

@@ -22,7 +22,20 @@ bosses:{times:[70,180,300,430],hp:[450,1100,2200,3600],dmg:24,spd:46,projDmg:18,
    spiralAt:.6,bossAt:.85,dropChance:.16,boostDur:6,
    pickupR:44,magnetR:90,
    vowFuryDmg:1.3,vowSwiftSpd:1.25,vowSwiftRate:.85,vowGreedDrop:1.5,vowStoneShield:1,
-   chaosSpawn:1.35,chaosHp:1.3,chaosDmg:1.2,chaosDrop:1.3},
+   chaosSpawn:1.35,chaosHp:1.3,chaosDmg:1.2,chaosDrop:1.3,chaosGuard:1.15,
+   tree:{sparkPerKill:1,sparkGuard:5,nodes:{
+    fire:[
+     {id:'f1',name:'Гатлинг',icon:'▲▲',cost:6,desc:'+25% скорострельность',fx:{rate:.25}},
+     {id:'f2',name:'Пробитие',icon:'>>',cost:10,desc:'пули пробивают +2',fx:{pierce:2}},
+     {id:'f3',name:'Форсаж',icon:'!!',cost:16,desc:'+50% урон',fx:{dmg:.5}}],
+    spread:[
+     {id:'s1',name:'Двойной ствол',icon:'≡',cost:6,desc:'+2 боковых выстрела',fx:{barrels:2}},
+     {id:'s2',name:'Веер',icon:'≡≡',cost:10,desc:'+2 боковых выстрела',fx:{barrels:2}},
+     {id:'s3',name:'Шторм',icon:'≡≡≡',cost:16,desc:'+2 выстрела, +20% урон',fx:{barrels:2,dmg:.2}}],
+    guard:[
+     {id:'g1',name:'Броня',icon:'◯',cost:6,desc:'+1 корпус за прыжок',fx:{hull:1}},
+     {id:'g2',name:'Магнит',icon:'◎',cost:10,desc:'магнит глифов +50%',fx:{magnet:1.5}},
+     {id:'g3',name:'Бастион',icon:'◉',cost:16,desc:'+1 корпус, глифы лечат 5',fx:{hull:1,healOnGlyph:5}}]}}},
   towers:{hp:180,gold:45,heal:30,xp:10,projDmg:8,shootEvery:3,projCount:3},
  economy:{heartEveryKills:26,heartHeal:14,heartMagnet:260},
  pets:{levels:[10,15,20],baseDmg:8,perLevel:.7,meleeSpeed:215,rangedSpeed:195,shootCd:1,shootRange:320},
