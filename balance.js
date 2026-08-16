@@ -23,6 +23,8 @@ bosses:{times:[70,180,300,430],hp:[450,1100,2200,3600],dmg:24,spd:46,projDmg:18,
    pickupR:44,magnetR:90,
    vowFuryDmg:1.3,vowSwiftSpd:1.25,vowSwiftRate:.85,vowGreedDrop:1.5,vowStoneShield:1,
    chaosSpawn:1.35,chaosHp:1.3,chaosDmg:1.2,chaosDrop:1.3,chaosGuard:1.15,
+   focusScale:.35,
+   combo:{need:2,rateDur:5,spreadDur:5,spreadBarrels:4,shieldBonus:2,shieldHeal:10},
    tree:{sparkPerKill:1,sparkGuard:5,nodes:{
     fire:[
      {id:'f1',name:'Гатлинг',icon:'▲▲',cost:6,desc:'+25% скорострельность',fx:{rate:.25}},

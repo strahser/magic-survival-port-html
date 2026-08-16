@@ -146,7 +146,9 @@ if(G.mode==='shooter'){glyph('▲',p.x,p.y,36,1,20);
  ctx.globalAlpha=1;ctx.restore();
 if(G.mode==='shooter'&&G.shoot){const pr=G.shoot.dist/G.shoot.goal;
    ctx.font='18px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffd166';
-   ctx.fillText('ГИПЕРПРЫЖОК '+Math.round(pr*100)+'%  ⚡'+(G.sparks||0),W/2,74);
+   let comboTxt='';if(G.comboBoost&&G.comboBoost.rate>0)comboTxt+=' ▲▲';
+   if(G.comboBoost&&G.comboBoost.spread>0)comboTxt+=' ≡';
+   ctx.fillText('ГИПЕРПРЫЖОК '+Math.round(pr*100)+'%  ⚡'+(G.sparks||0)+comboTxt,W/2,74);
    ctx.strokeStyle='#5aa7ff';ctx.lineWidth=4;
    ctx.strokeRect(W/2-150,H-34,300,8);
    ctx.fillStyle='#5aa7ff';ctx.fillRect(W/2-150,H-34,300*clamp(pr,0,1),8);}
