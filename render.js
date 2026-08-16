@@ -3,6 +3,16 @@ const INK='#eaf7ff';const TIERCOL=['#5aa7ff','#7dd88a','#ffd166','#ff5f6d'];
 const EGLYPH={blob:'Ω',runner:'Ψ',brute:'Ξ',wave:'∆',tower:'§',boss:'Ω',shooter:'λ',healer:'✚',guard:'Ω'};
 function glyph(ch,x,y,size,alpha,glow,color){ctx.globalAlpha=alpha==null?1:alpha;ctx.font=size+'px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';if(glow){ctx.shadowColor='#bfe9ff';ctx.shadowBlur=glow;}ctx.fillStyle=color||INK;ctx.fillText(ch,x,y);ctx.shadowBlur=0;ctx.globalAlpha=1;}
 function bGlyph(b){if(b.kind==='fire')return'*';if(b.homing)return'✦';if(b.return)return'»';if(b.kind==='pierce'){if(b.r>=15)return'≈';if(b.r<=4)return'·';if(b.slow)return'^';return'>';}return'*';}
+function drawShooterBG(){const warp=G.shoot&&G.shoot.warp>0,dist=G.shoot?G.shoot.dist:0;
+ const g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,'#0b0b2e');g.addColorStop(.5,'#1b0b40');g.addColorStop(1,'#050512');
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<60;i++){const x=(i*97.3)%W,sp=(i%3===0?2.2:1.2),y=((i*211)+dist*sp)%H,sz=(i%3===0?2:1);
+  ctx.fillStyle='#cfe9ff';ctx.fillRect(x,y,sz,sz);}
+ const n=warp?60:10;
+ for(let i=0;i<n;i++){const x=(i*173+dist*3)%W,y=((i*61)+dist*(warp?8:4))%H;
+  ctx.fillStyle='#bfe9ff';ctx.fillRect(x,y,warp?3:2,warp?40:14);}
+ ctx.globalAlpha=1;}
 (function buildMenu(){const row=$('classRow');
  for(const k in CLASSES){const C=CLASSES[k];const el=document.createElement('div');el.className='classCard';
   const cbs=COMBOS.filter(c=>c.cls===k);
@@ -62,15 +72,17 @@ function drawPointer(wx,wy,ch,color){const sx=wx-G.cam.x+W/2,sy=wy-G.cam.y+H/2;
  ctx.font='18px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=color;ctx.fillText(ch,ex,ey-16);}
 function render(){const p=G.player,cam=G.cam;
  cv.style.filter=(G.invertT>0)?'invert(1)':'';
- ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,0,W,H);
- const F=ACTS[Math.min(3,Math.floor(G.t/150))].floor;
- ctx.save();
- const sh=(G.settings&&G.settings.shake)?G.shake:0;
- ctx.translate(-cam.x+W/2+(Math.random()-.5)*sh,-cam.y+H/2+(Math.random()-.5)*sh);
- const lg=ctx.createRadialGradient(p.x,p.y,10,p.x,p.y,180);lg.addColorStop(0,'rgba(220,245,255,.2)');lg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=lg;ctx.fillRect(p.x-190,p.y-190,380,380);
- for(const q of G.dust)glyph(q.ph>TAU/2?F[0]:F[1],q.x,q.y,14,.14+.08*Math.sin(G.t*1.5+q.ph));
- for(const d of G.deco){const n=Math.floor(d.r/6);for(let i=0;i<n;i++){const a=i/n*TAU+G.t*d.s;glyph('·',d.x+Math.cos(a)*d.r,d.y+Math.sin(a)*d.r,12,.1);}}
- {const st=26;for(let x=0;x<=WORLD;x+=st){glyph('·',x,0,14,.5);glyph('·',x,WORLD,14,.5);}for(let y=0;y<=WORLD;y+=st){glyph('·',0,y,14,.5);glyph('·',WORLD,y,14,.5);}}
+ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,0,W,H);
+  if(G.mode==='shooter')drawShooterBG();
+  ctx.save();
+  const sh=(G.settings&&G.settings.shake)?G.shake:0;
+  ctx.translate(-cam.x+W/2+(Math.random()-.5)*sh,-cam.y+H/2+(Math.random()-.5)*sh);
+  if(G.mode!=='shooter'){const F=ACTS[Math.min(3,Math.floor(G.t/150))].floor;
+  const lg=ctx.createRadialGradient(p.x,p.y,10,p.x,p.y,180);lg.addColorStop(0,'rgba(220,245,255,.2)');lg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=lg;ctx.fillRect(p.x-190,p.y-190,380,380);
+  for(const q of G.dust)glyph(q.ph>TAU/2?F[0]:F[1],q.x,q.y,14,.14+.08*Math.sin(G.t*1.5+q.ph));
+  for(const d of G.deco){const n=Math.floor(d.r/6);for(let i=0;i<n;i++){const a=i/n*TAU+G.t*d.s;glyph('·',d.x+Math.cos(a)*d.r,d.y+Math.sin(a)*d.r,12,.1);}}
+  {const st=26;for(let x=0;x<=WORLD;x+=st){glyph('·',x,0,14,.5);glyph('·',x,WORLD,14,.5);}for(let y=0;y<=WORLD;y+=st){glyph('·',0,y,14,.5);glyph('·',WORLD,y,14,.5);}}
+  }
  for(const z of G.zones){
   if(z.type==='plague'){ctx.fillStyle='rgba(140,233,154,.13)';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,TAU);ctx.fill();}
   else if(z.type==='lava'){ctx.fillStyle='rgba(255,138,61,.14)';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,TAU);ctx.fill();}
@@ -80,13 +92,13 @@ function render(){const p=G.player,cam=G.cam;
   else if(z.type==='delayed'){glyph('×',z.x,z.y,18,.7,6);}
   else if(z.type==='void'){glyph('O',z.x,z.y,22,.9,12);}
   else if(z.type==='fx'){const pr=1-z.t/z.dur,r=lerp(z.r0,z.r1,pr);ctx.globalAlpha=1-pr;ctx.strokeStyle=z.col||'#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(z.x,z.y,r,0,TAU);ctx.stroke();ctx.globalAlpha=1;}}
- const GOLD='#ffd166';
- if(G.merchant&&!G.merchant.used){glyph('£',G.merchant.x,G.merchant.y,40,1,18,GOLD);
-  ctx.strokeStyle=GOLD;ctx.globalAlpha=.5+.3*Math.sin(G.t*4);ctx.beginPath();ctx.arc(G.merchant.x,G.merchant.y,30+Math.sin(G.t*4)*4,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
- for(const ch of G.chests){const c=ch.golden?GOLD:'#8ce99a';
-  glyph(ch.golden?'¤':'◊',ch.x,ch.y,ch.golden?32:26,1,14,c);
-  ctx.strokeStyle=c;ctx.globalAlpha=.5+.3*Math.sin(ch.t*4);ctx.beginPath();ctx.arc(ch.x,ch.y,22+Math.sin(ch.t*4)*3,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
- for(const h of G.hearts)glyph('+',h.x,h.y+Math.sin(h.t*5)*2,20,.95,10);
+if(G.mode!=='shooter'){const GOLD='#ffd166';
+  if(G.merchant&&!G.merchant.used){glyph('£',G.merchant.x,G.merchant.y,40,1,18,GOLD);
+   ctx.strokeStyle=GOLD;ctx.globalAlpha=.5+.3*Math.sin(G.t*4);ctx.beginPath();ctx.arc(G.merchant.x,G.merchant.y,30+Math.sin(G.t*4)*4,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
+  for(const ch of G.chests){const c=ch.golden?GOLD:'#8ce99a';
+   glyph(ch.golden?'¤':'◊',ch.x,ch.y,ch.golden?32:26,1,14,c);
+   ctx.strokeStyle=c;ctx.globalAlpha=.5+.3*Math.sin(ch.t*4);ctx.beginPath();ctx.arc(ch.x,ch.y,22+Math.sin(ch.t*4)*3,0,TAU);ctx.stroke();ctx.globalAlpha=1;}
+  for(const h of G.hearts)glyph('+',h.x,h.y+Math.sin(h.t*5)*2,20,.95,10);}
  for(const cp of G.cycPos){glyph('Ø',cp.x,cp.y,26,.9,10);}
  for(const e of G.enemies){const g=EGLYPH[e.type]||'Ω';const jx=e.flash>0?rnd(-2,2):0,jy=e.flash>0?rnd(-2,2):0;
   if(e.boss)glyph('[[Ω]]',e.x,e.y,40,.98,18);
@@ -104,7 +116,10 @@ function render(){const p=G.player,cam=G.cam;
  for(const f of G.ringPos)glyph('*',f.x,f.y,20,.95,10);
  if(G.mirrorPos)for(const mp of G.mirrorPos)glyph('@',mp.x,mp.y,18,.4,4);
  for(const pet of G.pets)glyph('¤',pet.x,pet.y+Math.sin(pet.bob)*2.5,18,.9,8);
- if(!(p.ifr>0&&(G.t*20|0)%2===0)){glyph('@',p.x,p.y,44,1,22);
+ if(G.mode==='shooter'){glyph('▲',p.x,p.y,36,1,20);
+   const n=8,filled=Math.round(clamp(p.hp/p.maxhp,0,1)*n);
+   glyph('['+'█'.repeat(filled)+'░'.repeat(n-filled)+']',p.x,p.y+30,12,.8);}
+  else if(!(p.ifr>0&&(G.t*20|0)%2===0)){glyph('@',p.x,p.y,44,1,22);
   const n=8,filled=Math.round(clamp(p.hp/p.maxhp,0,1)*n);
   glyph('['+'█'.repeat(filled)+'░'.repeat(n-filled)+']',p.x,p.y+30,12,.8);
   if(G.spells.shield||G.spells.archon)glyph('∩',p.x,p.y-p.r-12,14,.7);}
@@ -120,10 +135,12 @@ function render(){const p=G.player,cam=G.cam;
  for(const q of G.parts)glyph(q.ch||(q.r>2.5?'*':'·'),q.x,q.y,q.r>2.5?16:12,clamp(q.t/q.dur,0,1));
  for(const t of G.texts){ctx.globalAlpha=clamp(t.t/.7,0,1);ctx.font='16px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=t.col;ctx.fillText(t.txt,t.x,t.y);}
  ctx.globalAlpha=1;ctx.restore();
- if(G.travel>0){ctx.globalAlpha=.4;ctx.fillStyle='#eaf7ff';
-  for(let i=0;i<16;i++){const y=(i*61+G.t*40)%H;const x=W-((G.t*520+i*137)%(W+120));ctx.fillRect(x,y,26,2);}
-  ctx.globalAlpha=1;
-  ctx.font='30px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffd166';ctx.fillText('→ ПУТЕШЕСТВИЕ →',W/2,90);}
+if(G.mode==='shooter'&&G.shoot){const pr=G.shoot.dist/G.shoot.goal;
+   ctx.font='18px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffd166';
+   ctx.fillText('ГИПЕРПРЫЖОК '+Math.round(pr*100)+'%',W/2,74);
+   ctx.strokeStyle='#5aa7ff';ctx.lineWidth=4;
+   ctx.strokeRect(W/2-150,H-34,300,8);
+   ctx.fillStyle='#5aa7ff';ctx.fillRect(W/2-150,H-34,300*clamp(pr,0,1),8);}
  drawLog();drawRadar();
  if(G.settings.pointers){if(G.merchant&&!G.merchant.used)drawPointer(G.merchant.x,G.merchant.y,'£','#ffd166');
   for(const ch of G.chests)drawPointer(ch.x,ch.y,ch.golden?'¤':'◊',ch.golden?'#ffd166':'#8ce99a');}

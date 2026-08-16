@@ -59,7 +59,7 @@ function startGame(key,test,daily){const C=CLASSES[key],P=BALANCE.player,E=BALAN
   merchantT:15,merchant:null,merchantCd:0,towerT:60,guardT:30,bossWarn:0,bossWarnIdx:-1,ambT:0,evT:25,ev:null,
   runBosses:0,runCrafts:0,runT2:0,achNewly:[],waveCount:0,vowSpdMul:1,
   actIntroT:0,lastAct:-1,noiseT:0,invertT:0,settings:loadSet(),
-  stage:0,rewardOffers:[],travel:0,travT:0,autoT:0,
+  stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,
   track:{dmg:0,crits:0,hearts:0,chests:0,gold:0,evos:0},log:[],milestones:{},telemetry:[],logT:0,lastHit:'',
   cam:{x:WORLD/2,y:WORLD/2},bossRef:null,
   dust:Array.from({length:70},()=>({x:rnd(0,WORLD),y:rnd(0,WORLD),r:rnd(.8,2),ph:rnd(0,TAU)})),
@@ -238,11 +238,36 @@ function renderReward(){const box=$('rewardItems');box.innerHTML='';
   el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn">ВЗЯТЬ</button>`;
   el.querySelector('.buyBtn').onclick=()=>{if(state!=='reward')return;G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();sfx('buy');closeReward();};
   box.appendChild(el);}}
-function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';}
+function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';if(G.pendingShooter){G.pendingShooter=false;startShooter();}}
 function openChest(ch){const CH=BALANCE.chests;
- if(ch.golden){openReward(3);banner('¤ СУНДУК: ВЫБОР АРТЕФАКТА');}
+ if(ch.golden){if(ch.boss)G.pendingShooter=true;openReward(3);banner('¤ СУНДУК: ВЫБОР АРТЕФАКТА');}
  else{const gold=CH.goldMin+Math.round(G.t*CH.goldPerMin);G.gold+=gold;banner('◊ СУНДУК: +'+gold);}
  if(G.track)G.track.chests++;sfx('chest');refreshBuildUI();}
+function startShooter(){G.mode='shooter';G.shoot={warp:1.4,dist:0,goal:2600};
+ G.enemies=[];G.ebullets=[];G.travT=0;G.autoT=0;
+ banner('→ ГИПЕРПРЫЖОК →');sfx('time');}
+function endShooter(){G.mode='play';G.shoot=null;
+ G.enemies=[];G.ebullets=[];const p=G.player;
+ p.x=WORLD/2+rnd(-160,160);p.y=WORLD/2+rnd(-100,100);p.ifr=1.3;
+ banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ');sfx('boom');}
+function spawnShooterEnemy(){const p=G.player;
+ const t=pickArr(['runner','gunner']);const b=BALANCE.enemies[t==='runner'?'runner':'shooter'];
+ const hp=b.hp*hpMul()*(1+(G.stage-1)*.25);
+ G.enemies.push({x:p.x+rnd(-W/2,W/2)*.9,y:p.y-H/2-rnd(40,160),r:b.r,hp,maxhp:hp,spd:0,
+  dmg:6,xp:3,goldV:0,col:t==='runner'?'#7ee8fa':'#ffb45e',uid:uidN++,
+  flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:t==='runner'?'runner':'shooter',
+  elite:false,boss:false,sh:true,shoot:t,vy:rnd(170,240),ph:rnd(0,TAU),
+  shootT:1.5,tier:Math.min(4,G.stage+1)});}
+function updateShooter(dt){const p=G.player,S=G.shoot;
+ if(!S)return;
+ S.warp=Math.max(0,S.warp-dt);
+ if(S.warp>0){S.dist+=90*dt;}
+ else{S.dist+=230*dt;
+  G.travT-=dt;
+  if(G.travT<=0){G.travT=G.shoot.dist>G.shoot.goal*.6?1.5:2.2;spawnShooterEnemy();}
+  if(G.shoot.dist>G.shoot.goal*.6&&G.autoT<=0){G.autoT=.25;G.bullets.push({x:p.x+16,y:p.y,vx:520,vy:0,r:5,kind:'pierce',elem:'>',dmg:20*G.stats.dmg,pierce:2,life:1.2,hit:new Set(),col:'#fff'});}
+  G.autoT-=dt;
+  if(G.shoot.dist>=G.shoot.goal)endShooter();}}
 function crossUnlocked(){return G.player.level>=12||COMBOS.some(c=>c.cls===G.key&&G.combosAcquired.has(c.id));}
 function artRank(a){if(a.craftOnly)return'СБОРКА';if(a.cls)return'КЛАСС';if(a.req)return'ТИР+';return a.price>=130?'III':a.price>=90?'II':'I';}
 function openReward(n){const owned=new Set(G.artifacts);
@@ -254,7 +279,7 @@ function renderReward(){const box=$('rewardItems');box.innerHTML='';
   el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn">ВЗЯТЬ</button>`;
   el.querySelector('.buyBtn').onclick=()=>{if(state!=='reward')return;G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();sfx('buy');closeReward();};
   box.appendChild(el);}}
-function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';}
+function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';if(G.pendingShooter){G.pendingShooter=false;startShooter();}}
 function recipesFor(id){return RECIPES.filter(r=>r.need.includes(id)||r.id===id);}
 function refreshBuildUI(){const sk=$('skills');sk.innerHTML='';
  for(const id in G.spells){const d=SPELL_DEF[id];sk.innerHTML+=`<div class="chip">${d.icon}<b>${d.combo?'★':R[G.spells[id]-1]}</b></div>`;}
@@ -320,9 +345,14 @@ function kill(e,src){if(e.dead)return;e.dead=true;G.kills++;
  burst(e.x,e.y,e.boss?'#fff':e.elite?'#fff':'#9aa6e8',e.boss?40:e.elite?16:7,e.boss?260:120);
  if(e.aff==='split')for(let i=0;i<2;i++){const a=rnd(0,TAU);spawnEnemy('runner',false,{x:e.x+Math.cos(a)*22,y:e.y+Math.sin(a)*22});}
  if(e.type==='tower'){const TO=BALANCE.towers;addGold(TO.gold);G.player.hp=Math.min(G.player.maxhp,G.player.hp+TO.heal);banner('# БАШНЯ: +'+TO.gold+' +'+TO.heal);G.shake=Math.max(G.shake,10);sfx('boom');}
- if(e.type==='guard'){banner('✦ СТРАЖ ПАЛ!');}
+ if(e.type==='guard'){G.hearts.push({x:e.x,y:e.y,t:0});
+   G.chests.push({x:e.x,y:e.y,golden:Math.random()<.5,t:0});
+   banner('✦ СТРАЖ ПАЛ');}
  if(src!=='burst'&&G.spells.deathburst){const c=SPELL_DEF.deathburst.lv[G.spells.deathburst-1];areaDamage(e.x,e.y,c.aoe*Math.sqrt(G.stats.area*(1+synSum('area'))),c.dmg*G.stats.dmg,{src:'burst'});}
- if(e.boss){G.bossRef=null;G.shake=Math.max(G.shake,12);sfx('boom');banner('☠ БОСС ПОВЕРЖЕН +40');G.runBosses++;G.stage++;G.travel=12;G.travT=0;G.enemies=[];G.ebullets=[];banner('→ ПУТЕШЕСТВИЕ');}}
+ if(e.boss){G.bossRef=null;G.shake=Math.max(G.shake,12);sfx('boom');banner('☠ БОСС ПОВЕРЖЕН +40');G.runBosses++;addGold(40);
+   G.stage++;G.chests.push({x:e.x,y:e.y,golden:true,t:0,boss:true});
+   banner('☠ БОСС ПОВЕРЖЕН — СУНДУК!');}
+ }
 function areaDamage(x,y,r,dmg,o){o=o||{};for(const e of G.enemies){if(e.dead)continue;
  if(Math.hypot(e.x-x,e.y-y)<r+e.r){dealDamage(e,dmg,o);
   if(o.burn)addDot(e,o.burn*(1+synSum('burn')),2.5);
@@ -379,7 +409,7 @@ function spawnMerchant(){const p=G.player,a=rnd(0,TAU),d=rnd(280,460);
 function startEvent(){const p=G.player,type=pickArr(['meteor','fog','tide','bless']);G.ev={type,dur:9,mt:0};
  if(type==='tide'){for(let i=0;i<12;i++){const a=i/12*TAU;spawnEnemy('blob',false,{x:clamp(p.x+Math.cos(a)*420,20,WORLD-20),y:clamp(p.y+Math.sin(a)*420,20,WORLD-20)});}banner('≈ ПРИЛИВ ×1.5');}
  else if(type==='meteor')banner('* МЕТЕОРЫ');else if(type==='fog')banner('= ТУМАН');else banner('✦ БЛАГОСЛОВЕНИЕ');}
-function director(dt){if(G.travel>0)return;G.spawnT-=dt;G.waveT-=dt;G.merchantT-=dt;G.towerT-=dt;G.chestT-=dt;G.guardT-=dt;G.evT-=dt;G.merchantCd=Math.max(0,(G.merchantCd||0)-dt);
+function director(dt){G.spawnT-=dt;G.waveT-=dt;G.merchantT-=dt;G.towerT-=dt;G.chestT-=dt;G.guardT-=dt;G.evT-=dt;G.merchantCd=Math.max(0,(G.merchantCd||0)-dt);
  const t=G.t,E=BALANCE.enemies,BO=BALANCE.bosses,WV=BALANCE.waves,CH=BALANCE.chests;
  for(let i=0;i<BO.times.length;i++)if(G.bossIdx===i&&t>=BO.times[i]&&G.bossWarn<=0){G.bossWarn=2.2;G.bossWarnIdx=i;roar();banner('!!! ВНИМАНИЕ !!!');break;}
  if(G.merchantT<=0){G.merchantT=45;if(!G.merchant)spawnMerchant();}
@@ -531,9 +561,10 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
   if(e.aff==='thorns'&&Math.hypot(p.x-e.x,p.y-e.y)<e.r+22)damagePlayer(e.dmg*.4);
   for(let i=e.dots.length-1;i>=0;i--){const d=e.dots[i];e.hp-=d.dps*dt;d.t-=dt;if(d.t<=0)e.dots.splice(i,1);}
   if(e.hp<=0){kill(e,'dot');continue;}
-  if(e.travel){e.x+=e.vx*dt;
-   if(e.type==='shooter'){e.shootT=(e.shootT||1.5)-dt;if(e.shootT<=0){e.shootT=1.6;G.ebullets.push({x:e.x,y:e.y,vx:-220,vy:0,r:5,dmg:8,life:3});}}
-   if(e.x<p.x-W){e.dead=true;}}
+  if(e.sh){let sx=Math.sin(e.ph+dt*4)*130;
+   e.x+=sx*dt;e.y+=e.vy*dt;
+   if(e.type==='shooter'){e.shootT=(e.shootT||1.5)-dt;if(e.shootT<=0){e.shootT=1.6;G.ebullets.push({x:e.x,y:e.y,vx:0,vy:260,r:5,dmg:8,life:3});}}
+   if(e.shoot==='gunner'&&e.y<p.y){e.shootT2=(e.shootT2||2)-dt;if(e.shootT2<=0){e.shootT2=2.2;G.ebullets.push({x:e.x,y:e.y,vx:0,vy:300,r:6,dmg:10,life:4});}}}
   else if(e.spd>0&&e.stunT<=0){
    const a=Math.atan2(p.y-e.y,p.x-e.x),d=Math.hypot(p.x-e.x,p.y-e.y)||1;
    let sp=e.spd*(e.slowT>0?e.slowM:1);if(G.ev&&G.ev.type==='fog')sp*=.85;if(G.vowSpdMul)sp*=G.vowSpdMul;
@@ -593,16 +624,7 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
  for(const q of G.parts){q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.96;q.vy*=.96;}
  G.parts=G.parts.filter(q=>q.t>0);
  for(const t of G.texts){t.t-=dt;t.y-=34*dt;}G.texts=G.texts.filter(t=>t.t>0);
- director(dt);
- if(G.travel>0){G.travel-=dt;
-  G.travT-=dt;
-  if(G.travT<=0){G.travT=.8;const ty=clamp(p.y+rnd(-220,220),20,WORLD-20);
-   const type=pickArr(['runner','shooter','blob']);const b=BALANCE.enemies[type];
-   const cols={blob:'#6ea0ff',runner:'#7ee8fa',shooter:'#ffb45e'};
-   G.enemies.push({x:p.x+W/2+60,y:ty,r:b.r,hp:b.hp*hpMul(),maxhp:b.hp*hpMul(),spd:0,dmg:b.dmg,xp:b.xp,goldV:b.gold,col:cols[type],uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type,elite:false,boss:false,travel:true,vx:-rnd(150,210),shootT:1.5,tier:Math.min(4,G.stage+1)});}
-  G.autoT-=dt;
-  if(G.autoT<=0){G.autoT=.25;G.bullets.push({x:p.x+16,y:p.y,vx:520,vy:0,r:5,kind:'pierce',elem:'>',dmg:20*G.stats.dmg,pierce:2,life:1.2,hit:new Set(),col:'#fff'});}
-  if(G.travel<=0){G.travel=0;G.enemies=[];G.ebullets=[];openReward(3);banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ');}}
+if(G.mode==='shooter')updateShooter(dt);else director(dt);
  const k=1-Math.pow(.001,dt);G.cam.x=lerp(G.cam.x,p.x,k);G.cam.y=lerp(G.cam.y,p.y,k);
  G.cam.x=clamp(G.cam.x,Math.min(W/2,WORLD/2),Math.max(WORLD-W/2,WORLD/2));
  G.cam.y=clamp(G.cam.y,Math.min(H/2,WORLD/2),Math.max(WORLD-H/2,WORLD/2));
