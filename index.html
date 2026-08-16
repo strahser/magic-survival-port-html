@@ -80,6 +80,21 @@ h1{font-size:64px;letter-spacing:6px;color:#fff}
 .tabs{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;justify-content:center}
 .tabbtn{font-size:22px;padding:4px 20px;background:none;border:1px dashed var(--line);color:var(--dim);cursor:pointer}
 .tabbtn.active{color:#fff;border-style:solid}
+.mtree{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:4px}
+.mtSec{font-size:19px;color:#fff;border-bottom:1px dashed var(--line);padding:7px 0 3px;margin-top:10px;display:flex;align-items:center;gap:8px}
+.mtSec .mtSecIcon{font-size:22px}
+.mtRow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:6px 0}
+.mtCard{width:118px;border:1px solid rgba(234,247,255,.2);background:rgba(0,0,0,.55);padding:8px 6px;text-align:center;position:relative}
+.mtIcon{font-size:26px}
+.mtName{font-size:15px;color:#fff;line-height:1.15}
+.mtSub{font-size:13px;color:var(--dim)}
+.mtOwn{box-shadow:0 0 10px rgba(140,233,154,.25)}
+.mtOwn .mtName{color:#8ce99a}
+.mtReady{box-shadow:0 0 12px rgba(255,209,102,.45);border-color:#ffd166!important}
+.mtReady .mtName{color:#ffd166}
+.mtLock{opacity:.4}
+.mtLock::after{content:'🔒';position:absolute;top:2px;right:5px;font-size:12px}
+.mtArrow{text-align:center;color:var(--dim);font-size:18px;padding:2px 0}
 .tabpane{max-width:680px;width:100%;max-height:56vh;overflow:auto;border:1px dashed var(--line);padding:14px 18px}
 .treeRoot{max-width:720px;margin:0 auto}
 .treeBranch{margin:14px 0 4px}

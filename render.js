@@ -123,6 +123,9 @@ if(G.mode==='shooter'){glyph('▲',p.x,p.y,36,1,20);
     const n=8,filled=Math.round(clamp(p.hp/p.maxhp,0,1)*n);
     glyph('['+'█'.repeat(filled)+'░'.repeat(n-filled)+']',p.x,p.y+30,12,.8);
     if(G.shipShield>0){ctx.save();ctx.strokeStyle='#8ce99a';ctx.lineWidth=3;ctx.shadowColor='#8ce99a';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,34+Math.sin(G.t*6)*4,0,TAU);ctx.stroke();ctx.restore();}
+    if(G.comboBoost&&G.comboBoost.shieldVis>0){ctx.globalAlpha=.5+.3*Math.sin(G.t*10);
+     ctx.strokeStyle='#ffd166';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,26,0,TAU);ctx.stroke();
+     glyph('✦',p.x,p.y-30,16,.9,8,'#ffd166');ctx.globalAlpha=1;}
     let bx=p.x-58;
     if(G.boost.rate>0){glyph('▲▲',bx,p.y+46,13,.9,6);bx+=22;}
     if(G.boost.spread>0){glyph('≡',bx,p.y+46,13,.9,6);bx+=22;}

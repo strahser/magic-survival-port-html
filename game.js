@@ -146,28 +146,35 @@ function buildSynergyGrid(){const g=document.createElement('div');g.style.cssTex
 function buildPassiveGrid(){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
  for(const id in PASSIVE_DEF)g.appendChild(passiveCard(id));return g;}
 function syHasCross(sy,k){return sy.need.some(n=>{if(n.type==='passive')return false;const ow=spellOwner(n.id);return ow&&ow!==k;});}
-function buildTreePane(){const k=G.key,C=CLASSES[k],unl=crossUnlocked();let h='<div class="treeRoot">';
- h+=`<div class="treeBranch head">${C.icon} ${C.name} — основная школа</div><div class="treeCol">`;
- for(const id of C.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0;
-  h+=`<div class="treeNode ${lv?'own':'idle'}"><span class="tnIcon">${d.icon}</span><span class="tnName">${d.name}</span><span class="tnLv">${lv?R[lv-1]+'/'+d.lv.length:'—'}</span></div>`;}
+function mtCard(icon,name,sub,status,color){
+ const cls=status==='own'?'mtOwn':status==='ready'?'mtReady':status==='lock'?'mtLock':'mtIdle';
+ return `<div class="mtCard ${cls}" style="border-color:${color}55"><div class="mtIcon" style="color:${color}">${icon}</div><div class="mtName">${name}</div><div class="mtSub">${sub}</div></div>`;}
+function buildTreePane(){const k=G.key,C=CLASSES[k],unl=crossUnlocked();let h='<div class="mtree">';
+ h+=`<div class="mtSec"><span class="mtSecIcon" style="color:${C.color}">${C.icon}</span>${C.name} — основная школа</div><div class="mtRow">`;
+ for(const id of C.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0,mx=d.lv.length;
+  h+=mtCard(d.icon,d.name,'●'.repeat(lv)+'○'.repeat(mx-lv),lv?'own':'idle',C.color);}
+ h+='</div><div class="mtArrow">↓ синергии</div>';
+ h+=`<div class="mtSec"><span class="mtSecIcon">~</span>Синергии</div><div class="mtRow">`;
+ for(const sy of SYNERGIES){const on=synergyActive(sy),gated=!unl&&syHasCross(sy,k);
+  const comp=sy.need.map(n=>n.type==='passive'?PASSIVE_DEF[n.id].icon:SPELL_DEF[n.id].icon).join('+');
+  h+=mtCard(sy.icon,sy.name,comp,on?'own':gated?'lock':'idle',on?'#8ce99a':gated?'#7d8fa8':'#c99bff');}
+ h+='</div><div class="mtArrow">↓ эволюции</div>';
+ h+=`<div class="mtSec"><span class="mtSecIcon">⭐</span>Эволюции</div><div class="mtRow">`;
+ for(const c of COMBOS){if(c.cls&&c.cls!==k)continue;
+  if(c.need.every(n=>n.type!=='passive'&&SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo))continue;
+  const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
+  const comp=c.need.map(n=>n.type==='passive'?PASSIVE_DEF[n.id].icon:SPELL_DEF[n.id].icon).join('+');
+  h+=mtCard(c.icon,c.name,comp+(rd&&!on?' ★':''),on?'own':rd?'ready':'idle',CLASSES[c.cls]?CLASSES[c.cls].color:'#fff');}
  h+='</div>';
- h+=`<div class="treeBranch head">~ Синергии</div><div class="treeCol">`;
- for(const sy of SYNERGIES){const own=synergyActive(sy),gated=!unl&&syHasCross(sy,k);
-  const needs=sy.need.map(n=>{if(n.type==='passive')return PASSIVE_DEF[n.id].name+((G.passives[n.id]||0)?'✔':'·');
-   const ow=spellOwner(n.id);return (ow&&ow!==k?'['+CLASSES[ow].letter+'] ':'')+SPELL_DEF[n.id].name+(((G.spells[n.id]||0)>=1)?'✔':'·');}).join(' + ');
-  h+=`<div class="treeNode ${own?'own':gated?'lock':'idle'}"><span class="tnIcon">${sy.icon}</span><span class="tnName">${sy.name}</span><span class="tnLv">${own?'АКТИВНА':gated?'🔒 эволюция/LV12':needs}</span></div>`;}
- h+='</div>';
- h+=`<div class="treeBranch head">⭐ Эволюции</div><div class="treeCol">`;
- for(const c of COMBOS){if(c.cls&&c.cls!==k)continue;const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
-  const t2=c.need.every(n=>SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo);
-  const needs=c.need.map(n=>{if(n.type==='passive')return PASSIVE_DEF[n.id].name+' ур'+n.lv+(((G.passives[n.id]||0)>=n.lv)?'✔':'·');
-   return SPELL_DEF[n.id].name+' ур'+n.lv+(((G.spells[n.id]||0)>=n.lv)?'✔':'·');}).join(' + ');
-  h+=`<div class="treeNode ${on?'own':rd?'ready':'idle'}"><span class="tnIcon">${c.icon}</span><span class="tnName">${c.name}${t2?' · ТИР2':''}</span><span class="tnLv">${on?'ИЗУЧЕНА':rd?'⭐ ГОТОВА':needs}</span></div>`;}
- h+='</div>';
- h+=`<div class="treeBranch head">Второстепенные школы ${unl?'':'🔒'}</div><div class="treeCol">`;
+ const t2s=COMBOS.filter(c=>(!c.cls||c.cls===k)&&c.need.every(n=>n.type!=='passive'&&SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo));
+ if(t2s.length){h+=`<div class="mtSec"><span class="mtSecIcon">⭐⭐</span>Эволюции ТИР2</div><div class="mtRow">`;
+  for(const c of t2s){const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
+   h+=mtCard(c.icon,c.name,c.need.map(n=>SPELL_DEF[n.id].icon).join('+'),on?'own':rd?'ready':'idle','#ffd166');}
+  h+='</div>';}
+ h+=`<div class="mtSec"><span class="mtSecIcon">🔒</span>Второстепенные школы ${unl?'(открыто)':'(нужна эволюция своей школы или LV12)'}</div><div class="mtRow">`;
  for(const ok of CLASS_ORDER){if(ok===k)continue;const OC=CLASSES[ok];
   for(const id of OC.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0;
-   h+=`<div class="treeNode ${lv?'own':unl?'idle':'lock'}"><span class="tnIcon">${d.icon}</span><span class="tnName">${d.name}</span><span class="tnLv">${lv?R[lv-1]:unl?'доступно':'🔒'}</span></div>`;}}
+   h+=mtCard(d.icon,d.name,lv?'●'.repeat(lv):(unl?'доступно':'закрыто'),lv?'own':unl?'idle':'lock',OC.color);}}
  h+='</div></div>';$('tab-tree').innerHTML=h;}
 function buildSpellGrid(k){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
  for(const id of Object.keys(SPELL_DEF))if(!SPELL_DEF[id].combo&&spellOwner(id)===k)g.appendChild(spellCard(id));return g;}
@@ -264,7 +271,7 @@ function triggerGlyphCombo(t){const C=BALANCE.shooter.combo;
  if(t==='rate'){G.comboBoost.rate=C.rateDur;banner('▲▲×2 ГАТЛИНГ!');}
  else if(t==='spread'){G.comboBoost.spread=C.spreadDur;banner('≡×2 ШТОРМ-ВЕЕР!');}
  else{G.shipShield=(G.shipShield||0)+C.shieldBonus;
-  G.player.hp=Math.min(G.player.maxhp,G.player.hp+C.shieldHeal);banner('◯×2 БАСТИОН!');}
+  G.player.hp=Math.min(G.player.maxhp,G.player.hp+C.shieldHeal);G.comboBoost.shieldVis=5;banner('◯×2 БАСТИОН!');}
  sfx('level');}
 function spawnBoost(x,y){G.boosts.push({x,y,t:0,ty:Math.floor(Math.random()*3)});}
 function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
@@ -272,7 +279,7 @@ function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
   G.player.x=WORLD/2;G.player.y=WORLD/2;G.cam.x=WORLD/2;G.cam.y=WORLD/2;
   G.shoot={dist:0,goal:SH.goal,t:0,warp:SH.warp,mid:false,kills:0,drops:0,guard:null};G.travT=0;G.autoT=0;
   G.boost={rate:0,spread:0};G.shipShield=0;G.boosts=[];G.spiralT=0;
-  G.glyphCount={rate:0,spread:0,shield:0};G.comboBoost={rate:0,spread:0};
+  G.glyphCount={rate:0,spread:0,shield:0};G.comboBoost={rate:0,spread:0,shieldVis:0};
   if((G.vow||'')==='stone')G.shipShield=(G.shipShield||0)+SH.vowStoneShield;
   G.shipShield=(G.shipShield||0)+(G.hbuff.hull||0);
   const tags=[];if(G.vow)tags.push(VOWS[G.vow]);if(G.diffMode===2)tags.push('ХАОС');
@@ -309,6 +316,7 @@ function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shoot
   if(!G.shoot)return;
   if(G.comboBoost.rate>0)G.comboBoost.rate-=dt;
   if(G.comboBoost.spread>0)G.comboBoost.spread-=dt;
+  if(G.comboBoost.shieldVis>0)G.comboBoost.shieldVis-=dt;
   G.shoot.t+=dt;
   if(G.shoot.warp>0){G.shoot.warp-=dt;G.shake=2;}
   else{G.shoot.dist+=dt*SH.speed;
@@ -345,7 +353,7 @@ function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shoot
      const chg=(G.diffMode===2?BALANCE.shooter.chaosGuard:1);
      const e={x:p.x+rnd(-120,120),y:p.y-190,r:b.r*1.6,hp:b.hp*hpMul()*1.8*chg,maxhp:b.hp*hpMul()*1.8*chg,spd:0,dmg:b.dmg,xp:12,goldV:0,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'brute',elite:true,boss:false,sh:true,sent:true,shMode:'hover',shV:70,shA:90,shF:1.4,shPh:0,shootT:1,tier:4};
      G.enemies.push(e);G.shoot.guard=e;banner('☠ ГИПЕРСТРАЖ');}
-    for(let bi=G.boosts.length-1;bi>=0;bi--){const bo=G.boosts[bi];bo.t+=dt;
+     for(let bi=G.boosts.length-1;bi>=0;bi--){const bo=G.boosts[bi];if(!bo)continue;bo.t+=dt;
      const bd=Math.hypot(bo.x-p.x,bo.y-p.y);
      if(bd<SH.magnetR*(G.hbuff.magnet||1)){const ba=Math.atan2(p.y-bo.y,p.x-bo.x);bo.x+=Math.cos(ba)*260*dt;bo.y+=Math.sin(ba)*260*dt;}
      if(bd<SH.pickupR){if(G.hbuff.healOnGlyph)G.player.hp=Math.min(G.player.maxhp,G.player.hp+G.hbuff.healOnGlyph);
