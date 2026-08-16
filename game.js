@@ -59,7 +59,7 @@ function startGame(key,test,daily){const C=CLASSES[key],P=BALANCE.player,E=BALAN
   merchantT:15,merchant:null,merchantCd:0,towerT:60,guardT:30,bossWarn:0,bossWarnIdx:-1,ambT:0,evT:25,ev:null,
   runBosses:0,runCrafts:0,runT2:0,achNewly:[],waveCount:0,vowSpdMul:1,
   actIntroT:0,lastAct:-1,noiseT:0,invertT:0,settings:loadSet(),
-  stage:0,rewardOffers:[],
+  stage:0,rewardOffers:[],travel:0,travT:0,autoT:0,
   track:{dmg:0,crits:0,hearts:0,chests:0,gold:0,evos:0},log:[],milestones:{},telemetry:[],logT:0,lastHit:'',
   cam:{x:WORLD/2,y:WORLD/2},bossRef:null,
   dust:Array.from({length:70},()=>({x:rnd(0,WORLD),y:rnd(0,WORLD),r:rnd(.8,2),ph:rnd(0,TAU)})),
@@ -284,7 +284,7 @@ function kill(e,src){if(e.dead)return;e.dead=true;G.kills++;
  if(e.type==='tower'){const TO=BALANCE.towers;addGold(TO.gold);G.player.hp=Math.min(G.player.maxhp,G.player.hp+TO.heal);banner('# БАШНЯ: +'+TO.gold+' +'+TO.heal);G.shake=Math.max(G.shake,10);sfx('boom');}
  if(e.type==='guard'){banner('✦ СТРАЖ ПАЛ!');}
  if(src!=='burst'&&G.spells.deathburst){const c=SPELL_DEF.deathburst.lv[G.spells.deathburst-1];areaDamage(e.x,e.y,c.aoe*Math.sqrt(G.stats.area*(1+synSum('area'))),c.dmg*G.stats.dmg,{src:'burst'});}
- if(e.boss){G.bossRef=null;G.shake=Math.max(G.shake,12);sfx('boom');banner('☠ БОСС ПОВЕРЖЕН +40');G.runBosses++;G.stage++;banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ');openReward(3);}}
+ if(e.boss){G.bossRef=null;G.shake=Math.max(G.shake,12);sfx('boom');banner('☠ БОСС ПОВЕРЖЕН +40');G.runBosses++;G.stage++;G.travel=12;G.travT=0;G.enemies=[];G.ebullets=[];banner('→ ПУТЕШЕСТВИЕ');}}
 function areaDamage(x,y,r,dmg,o){o=o||{};for(const e of G.enemies){if(e.dead)continue;
  if(Math.hypot(e.x-x,e.y-y)<r+e.r){dealDamage(e,dmg,o);
   if(o.burn)addDot(e,o.burn*(1+synSum('burn')),2.5);
@@ -340,7 +340,7 @@ function spawnMerchant(){const p=G.player,a=rnd(0,TAU),d=rnd(280,460);
 function startEvent(){const p=G.player,type=pickArr(['meteor','fog','tide','bless']);G.ev={type,dur:9,mt:0};
  if(type==='tide'){for(let i=0;i<12;i++){const a=i/12*TAU;spawnEnemy('blob',false,{x:clamp(p.x+Math.cos(a)*420,20,WORLD-20),y:clamp(p.y+Math.sin(a)*420,20,WORLD-20)});}banner('≈ ПРИЛИВ ×1.5');}
  else if(type==='meteor')banner('* МЕТЕОРЫ');else if(type==='fog')banner('= ТУМАН');else banner('✦ БЛАГОСЛОВЕНИЕ');}
-function director(dt){G.spawnT-=dt;G.waveT-=dt;G.merchantT-=dt;G.towerT-=dt;G.chestT-=dt;G.guardT-=dt;G.evT-=dt;G.merchantCd=Math.max(0,(G.merchantCd||0)-dt);
+function director(dt){if(G.travel>0)return;G.spawnT-=dt;G.waveT-=dt;G.merchantT-=dt;G.towerT-=dt;G.chestT-=dt;G.guardT-=dt;G.evT-=dt;G.merchantCd=Math.max(0,(G.merchantCd||0)-dt);
  const t=G.t,E=BALANCE.enemies,BO=BALANCE.bosses,WV=BALANCE.waves,CH=BALANCE.chests;
  for(let i=0;i<BO.times.length;i++)if(G.bossIdx===i&&t>=BO.times[i]&&G.bossWarn<=0){G.bossWarn=2.2;G.bossWarnIdx=i;roar();banner('!!! ВНИМАНИЕ !!!');break;}
  if(G.merchantT<=0){G.merchantT=45;if(!G.merchant)spawnMerchant();}
@@ -492,7 +492,10 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
   if(e.aff==='thorns'&&Math.hypot(p.x-e.x,p.y-e.y)<e.r+22)damagePlayer(e.dmg*.4);
   for(let i=e.dots.length-1;i>=0;i--){const d=e.dots[i];e.hp-=d.dps*dt;d.t-=dt;if(d.t<=0)e.dots.splice(i,1);}
   if(e.hp<=0){kill(e,'dot');continue;}
-  if(e.spd>0&&e.stunT<=0){
+  if(e.travel){e.x+=e.vx*dt;
+   if(e.type==='shooter'){e.shootT=(e.shootT||1.5)-dt;if(e.shootT<=0){e.shootT=1.6;G.ebullets.push({x:e.x,y:e.y,vx:-220,vy:0,r:5,dmg:8,life:3});}}
+   if(e.x<p.x-W){e.dead=true;}}
+  else if(e.spd>0&&e.stunT<=0){
    const a=Math.atan2(p.y-e.y,p.x-e.x),d=Math.hypot(p.x-e.x,p.y-e.y)||1;
    let sp=e.spd*(e.slowT>0?e.slowM:1);if(G.ev&&G.ev.type==='fog')sp*=.85;if(G.vowSpdMul)sp*=G.vowSpdMul;
    if(e.type==='shooter'){e.shootT=(e.shootT||2)-dt;const dir=d>300?1:d<220?-1:0;const sa=a+Math.PI/2*((e.uid%2)?1:-1);
@@ -552,6 +555,15 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
  G.parts=G.parts.filter(q=>q.t>0);
  for(const t of G.texts){t.t-=dt;t.y-=34*dt;}G.texts=G.texts.filter(t=>t.t>0);
  director(dt);
+ if(G.travel>0){G.travel-=dt;
+  G.travT-=dt;
+  if(G.travT<=0){G.travT=.8;const ty=clamp(p.y+rnd(-220,220),20,WORLD-20);
+   const type=pickArr(['runner','shooter','blob']);const b=BALANCE.enemies[type];
+   const cols={blob:'#6ea0ff',runner:'#7ee8fa',shooter:'#ffb45e'};
+   G.enemies.push({x:p.x+W/2+60,y:ty,r:b.r,hp:b.hp*hpMul(),maxhp:b.hp*hpMul(),spd:0,dmg:b.dmg,xp:b.xp,goldV:b.gold,col:cols[type],uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type,elite:false,boss:false,travel:true,vx:-rnd(150,210),shootT:1.5,tier:Math.min(4,G.stage+1)});}
+  G.autoT-=dt;
+  if(G.autoT<=0){G.autoT=.25;G.bullets.push({x:p.x+16,y:p.y,vx:520,vy:0,r:5,kind:'pierce',elem:'>',dmg:20*G.stats.dmg,pierce:2,life:1.2,hit:new Set(),col:'#fff'});}
+  if(G.travel<=0){G.travel=0;G.enemies=[];G.ebullets=[];openReward(3);banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ');}}
  const k=1-Math.pow(.001,dt);G.cam.x=lerp(G.cam.x,p.x,k);G.cam.y=lerp(G.cam.y,p.y,k);
  G.cam.x=clamp(G.cam.x,Math.min(W/2,WORLD/2),Math.max(WORLD-W/2,WORLD/2));
  G.cam.y=clamp(G.cam.y,Math.min(H/2,WORLD/2),Math.max(WORLD-H/2,WORLD/2));

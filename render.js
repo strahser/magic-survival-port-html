@@ -120,6 +120,10 @@ function render(){const p=G.player,cam=G.cam;
  for(const q of G.parts)glyph(q.ch||(q.r>2.5?'*':'·'),q.x,q.y,q.r>2.5?16:12,clamp(q.t/q.dur,0,1));
  for(const t of G.texts){ctx.globalAlpha=clamp(t.t/.7,0,1);ctx.font='16px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=t.col;ctx.fillText(t.txt,t.x,t.y);}
  ctx.globalAlpha=1;ctx.restore();
+ if(G.travel>0){ctx.globalAlpha=.4;ctx.fillStyle='#eaf7ff';
+  for(let i=0;i<16;i++){const y=(i*61+G.t*40)%H;const x=W-((G.t*520+i*137)%(W+120));ctx.fillRect(x,y,26,2);}
+  ctx.globalAlpha=1;
+  ctx.font='30px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffd166';ctx.fillText('→ ПУТЕШЕСТВИЕ →',W/2,90);}
  drawLog();drawRadar();
  if(G.settings.pointers){if(G.merchant&&!G.merchant.used)drawPointer(G.merchant.x,G.merchant.y,'£','#ffd166');
   for(const ch of G.chests)drawPointer(ch.x,ch.y,ch.golden?'¤':'◊',ch.golden?'#ffd166':'#8ce99a');}
