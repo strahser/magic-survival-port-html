@@ -141,10 +141,34 @@ function buildSynergyGrid(){const g=document.createElement('div');g.style.cssTex
   el.innerHTML=`<div class="pcIcon">${sy.icon}</div><div class="pcName">${sy.name}</div><div class="evoNeeds"><div class="evoNeed">${needs}</div></div><div class="pcLvl">${on?'АКТИВНА':'—'}</div><div class="pcDesc">${sy.desc}</div>`;
   g.appendChild(el);}
  return g;}
-function buildSpellGrid(k){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
- for(const id of Object.keys(SPELL_DEF))if(!SPELL_DEF[id].combo&&spellOwner(id)===k)g.appendChild(spellCard(id));return g;}
 function buildPassiveGrid(){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
  for(const id in PASSIVE_DEF)g.appendChild(passiveCard(id));return g;}
+function syHasCross(sy,k){return sy.need.some(n=>{if(n.type==='passive')return false;const ow=spellOwner(n.id);return ow&&ow!==k;});}
+function buildTreePane(){const k=G.key,C=CLASSES[k],unl=crossUnlocked();let h='<div class="treeRoot">';
+ h+=`<div class="treeBranch head">${C.icon} ${C.name} — основная школа</div><div class="treeCol">`;
+ for(const id of C.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0;
+  h+=`<div class="treeNode ${lv?'own':'idle'}"><span class="tnIcon">${d.icon}</span><span class="tnName">${d.name}</span><span class="tnLv">${lv?R[lv-1]+'/'+d.lv.length:'—'}</span></div>`;}
+ h+='</div>';
+ h+=`<div class="treeBranch head">~ Синергии</div><div class="treeCol">`;
+ for(const sy of SYNERGIES){const own=synergyActive(sy),gated=!unl&&syHasCross(sy,k);
+  const needs=sy.need.map(n=>{if(n.type==='passive')return PASSIVE_DEF[n.id].name+((G.passives[n.id]||0)?'✔':'·');
+   const ow=spellOwner(n.id);return (ow&&ow!==k?'['+CLASSES[ow].letter+'] ':'')+SPELL_DEF[n.id].name+(((G.spells[n.id]||0)>=1)?'✔':'·');}).join(' + ');
+  h+=`<div class="treeNode ${own?'own':gated?'lock':'idle'}"><span class="tnIcon">${sy.icon}</span><span class="tnName">${sy.name}</span><span class="tnLv">${own?'АКТИВНА':gated?'🔒 эволюция/LV12':needs}</span></div>`;}
+ h+='</div>';
+ h+=`<div class="treeBranch head">⭐ Эволюции</div><div class="treeCol">`;
+ for(const c of COMBOS){if(c.cls&&c.cls!==k)continue;const on=G.combosAcquired.has(c.id),rd=comboConditionsMet(c);
+  const t2=c.need.every(n=>SPELL_DEF[n.id]&&SPELL_DEF[n.id].combo);
+  const needs=c.need.map(n=>{if(n.type==='passive')return PASSIVE_DEF[n.id].name+' ур'+n.lv+(((G.passives[n.id]||0)>=n.lv)?'✔':'·');
+   return SPELL_DEF[n.id].name+' ур'+n.lv+(((G.spells[n.id]||0)>=n.lv)?'✔':'·');}).join(' + ');
+  h+=`<div class="treeNode ${on?'own':rd?'ready':'idle'}"><span class="tnIcon">${c.icon}</span><span class="tnName">${c.name}${t2?' · ТИР2':''}</span><span class="tnLv">${on?'ИЗУЧЕНА':rd?'⭐ ГОТОВА':needs}</span></div>`;}
+ h+='</div>';
+ h+=`<div class="treeBranch head">Второстепенные школы ${unl?'':'🔒'}</div><div class="treeCol">`;
+ for(const ok of CLASS_ORDER){if(ok===k)continue;const OC=CLASSES[ok];
+  for(const id of OC.pool){const d=SPELL_DEF[id],lv=G.spells[id]||0;
+   h+=`<div class="treeNode ${lv?'own':unl?'idle':'lock'}"><span class="tnIcon">${d.icon}</span><span class="tnName">${d.name}</span><span class="tnLv">${lv?R[lv-1]:unl?'доступно':'🔒'}</span></div>`;}}
+ h+='</div></div>';$('tab-tree').innerHTML=h;}
+function buildSpellGrid(k){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%';
+ for(const id of Object.keys(SPELL_DEF))if(!SPELL_DEF[id].combo&&spellOwner(id)===k)g.appendChild(spellCard(id));return g;}
 function capText(c){const t=[];
  if(c.aoe)t.push('взрыв');if(c.pierce)t.push('пробивает');if(c.slow)t.push('замедляет');
  if(c.burn)t.push('поджигает');if(c.chains)t.push('цепь');if(c.n&&c.n>1)t.push('×'+c.n);
@@ -262,7 +286,8 @@ function buildPause(){let m='';const groups=[...CLASS_ORDER.map(k=>({k,t:CLASSES
  if(G.artifacts.length){a+='<div class="note" style="margin:0 0 8px">Рецепты: Кошка+Ускоритель · Гримуар1+Линза1 · Руна2+Око · Проводник+Магнит · Щупальца+Призма · классовые: Уголь+Руна2 · Фонарь+Клык · Проводник+Часы2 · ПризмаАрх+Линза2</div>';
   for(const id of G.artifacts){const x=ARTSHOP.find(q=>q.id===id);a+=`<div class="listRow"><div class="li">${x.icon}</div><div class="ln">${x.name}</div></div>`;}}
  else a='<div class="emptyMsg">нет артефактов — ищи £ и ◊</div>';
- $('tab-arts').innerHTML=a;}
+ $('tab-arts').innerHTML=a;
+ buildTreePane();}
 /* ---------- бой ---------- */
 function nearestEnemies(x,y,n){const es=G.enemies;if(!es.length)return[];return es.map(e=>[(e.x-x)**2+(e.y-y)**2,e]).sort((a,b)=>a[0]-b[0]).slice(0,n).map(p=>p[1]);}
 function nearestEnemy(x,y){let b=null,bd=1e18;for(const e of G.enemies){const d=(e.x-x)**2+(e.y-y)**2;if(d<bd){bd=d;b=e;}}return b;}

@@ -81,6 +81,17 @@ h1{font-size:64px;letter-spacing:6px;color:#fff}
 .tabbtn{font-size:22px;padding:4px 20px;background:none;border:1px dashed var(--line);color:var(--dim);cursor:pointer}
 .tabbtn.active{color:#fff;border-style:solid}
 .tabpane{max-width:680px;width:100%;max-height:56vh;overflow:auto;border:1px dashed var(--line);padding:14px 18px}
+.treeRoot{max-width:720px;margin:0 auto}
+.treeBranch{margin:14px 0 4px}
+.treeBranch.head{color:#fff;font-size:20px;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.treeCol{padding-left:14px;border-left:1px dashed rgba(234,247,255,.2)}
+.treeNode{display:flex;gap:10px;align-items:baseline;padding:5px 8px;border-bottom:1px dashed rgba(234,247,255,.1);font-size:18px}
+.treeNode .tnIcon{width:30px;text-align:center;color:#fff}
+.treeNode .tnName{flex:1}
+.treeNode .tnLv{color:var(--dim);font-size:15px;text-align:right}
+.treeNode.own .tnName{color:#8ce99a}
+.treeNode.ready .tnName{color:#ffd166}
+.treeNode.lock{opacity:.4}
 .listRow{display:flex;gap:12px;padding:6px 4px;border-bottom:1px dashed rgba(234,247,255,.15);font-size:19px}
 .listRow .li{font-size:24px;width:34px;text-align:center}
 .listRow .ln{flex:1}.listRow .ll{color:var(--dim)}.listRow .ld{color:var(--dim);font-size:15px}
@@ -159,8 +170,8 @@ h1{font-size:64px;letter-spacing:6px;color:#fff}
  <div class="row" style="margin-top:16px"><button class="btn" id="testPet">¤ питомец</button><button class="btn" id="testReset">[ сброс ]</button><button class="btn" id="testClear">[ очистить ]</button><button class="btn" id="testClose">[ В БОЙ ]</button></div>
 </div>
 <div id="pauseOv" class="screen hide"><div class="ovTitle">|| ПАУЗА</div>
- <div class="tabs"><button class="tabbtn active" data-tab="magic">* МАГИЯ</button><button class="tabbtn" data-tab="combos">& ЭВОЛЮЦИИ</button><button class="tabbtn" data-tab="syn">~ СИНЕРГИИ</button><button class="tabbtn" data-tab="stats">= СТАТЫ</button><button class="tabbtn" data-tab="arts">¤ АРТЕФАКТЫ</button></div>
- <div id="tab-magic" class="tabpane"></div><div id="tab-combos" class="tabpane hide"></div><div id="tab-syn" class="tabpane hide"></div><div id="tab-stats" class="tabpane hide"></div><div id="tab-arts" class="tabpane hide"></div>
+ <div class="tabs"><button class="tabbtn active" data-tab="magic">* МАГИЯ</button><button class="tabbtn" data-tab="combos">& ЭВОЛЮЦИИ</button><button class="tabbtn" data-tab="syn">~ СИНЕРГИИ</button><button class="tabbtn" data-tab="stats">= СТАТЫ</button><button class="tabbtn" data-tab="arts">¤ АРТЕФАКТЫ</button><button class="tabbtn" data-tab="tree">⌘ ДЕРЕВО</button></div>
+ <div id="tab-magic" class="tabpane"></div><div id="tab-combos" class="tabpane hide"></div><div id="tab-syn" class="tabpane hide"></div><div id="tab-stats" class="tabpane hide"></div><div id="tab-arts" class="tabpane hide"></div><div id="tab-tree" class="tabpane hide"></div>
  <div class="row" style="margin-bottom:12px"><button class="btn" id="setShake">тряска: вкл</button><button class="btn" id="setDmg">цифры: вкл</button><button class="btn" id="setRank">ранги: ч/б</button><button class="btn" id="setAmb">фон: вкл</button><button class="btn" id="setSnd">звук: вкл</button><button class="btn" id="setPoint">указатели: вкл</button></div>
  <div class="row"><button class="btn" id="resumeBtn">[ ПРОДОЛЖИТЬ ]</button><button class="btn" id="pauseMenuBtn">[ В МЕНЮ ]</button></div>
 </div>

@@ -155,7 +155,7 @@ $('winGo').onclick=()=>{G.endless=true;$('winOv').classList.add('hide');state='p
 $('winMenu').onclick=toMenu;
 $('shopClose').onclick=closeShop;
 document.querySelectorAll('.tabbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const t=b.dataset.tab;
- ['magic','combos','syn','stats','arts'].forEach(x=>$('tab-'+x).classList.toggle('hide',x!==t));});
+ ['magic','combos','syn','stats','arts','tree'].forEach(x=>$('tab-'+x).classList.toggle('hide',x!==t));});
 function syncSetBtns(){if(!G)return;
  $('setShake').textContent='тряска: '+(G.settings.shake?'вкл':'выкл');
  $('setDmg').textContent='цифры: '+(G.settings.dmg?'вкл':'выкл');
