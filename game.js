@@ -295,19 +295,35 @@ function applyHbuff(){const T=BALANCE.shooter.tree.nodes,b={rate:0,pierce:0,dmg:
  G.hbuff=b;}
 function boostName(t){return t===0?'▲▲ Скорострельность':t===1?'≡ Веер':'◯ Щит';}
 function boostColor(t){return t===0?'#ff9a3d':t===1?'#7ee8fa':'#8ce99a';}
-function triggerGlyphCombo(t){const C=BALANCE.shooter.combo;
- if(t==='rate'){G.comboBoost.rate=C.rateDur;banner('▲▲×2 ГАТЛИНГ!');}
- else if(t==='spread'){G.comboBoost.spread=C.spreadDur;banner('≡×2 ШТОРМ-ВЕЕР!');}
- else{G.shipShield=(G.shipShield||0)+C.shieldBonus;
-  G.player.hp=Math.min(G.player.maxhp,G.player.hp+C.shieldHeal);G.comboBoost.shieldVis=5;banner('◯×2 БАСТИОН!');}
+function triggerGlyphCombo(t,tier){const C=BALANCE.shooter.combo;
+ if(t==='rate'){
+  if(tier===2){G.comboBoost.rate=C.rate2Dur;G.comboBoost.rateMult=C.rate2Mult;banner('▲▲×3 ПЕРЕГРЕВ!');}
+  else{G.comboBoost.rate=C.rateDur;G.comboBoost.rateMult=2;banner('▲▲×2 ГАТЛИНГ!');}}
+ else if(t==='spread'){
+  if(tier===2){G.comboBoost.spread=C.spread2Dur;G.comboBoost.spreadBarrels=C.spread2Barrels;banner('≡×3 БУРЯ!');}
+  else{G.comboBoost.spread=C.spreadDur;G.comboBoost.spreadBarrels=C.spreadBarrels;banner('≡×2 ШТОРМ-ВЕЕР!');}}
+ else{
+  if(tier===2){G.shipShield=(G.shipShield||0)+C.shield2Bonus;
+   G.player.hp=Math.min(G.player.maxhp,G.player.hp+C.shield2Heal);
+   G.comboBoost.shieldVis=5;banner('◯×3 КРЕПОСТЬ!');}
+  else{G.shipShield=(G.shipShield||0)+C.shieldBonus;
+   G.player.hp=Math.min(G.player.maxhp,G.player.hp+C.shieldHeal);
+   G.comboBoost.shieldVis=5;banner('◯×2 БАСТИОН!');}}
+ if(tier===2)G.shake=Math.max(G.shake,6);
  sfx('level');}
+function checkGlyphTier(t){const C=BALANCE.shooter.combo;
+ if(!G.glyphTier)G.glyphTier={};
+ const cnt=G.glyphCount[t]||0,cur=G.glyphTier[t]||0;
+ if(cnt>=C.need2&&cur<2){G.glyphTier[t]=2;triggerGlyphCombo(t,2);}
+ else if(cnt>=C.need&&cur<1){G.glyphTier[t]=1;triggerGlyphCombo(t,1);}}
 function spawnBoost(x,y){G.boosts.push({x,y,t:0,ty:Math.floor(Math.random()*3)});}
 function startShooter(){G.mode='shooter';const SH=BALANCE.shooter;
   G.ebullets=[];G.bullets=[];
   G.player.x=WORLD/2;G.player.y=WORLD/2;G.cam.x=WORLD/2;G.cam.y=WORLD/2;
   G.shoot={dist:0,goal:SH.goal,t:0,warp:SH.warp,mid:false,kills:0,drops:0,guard:null};G.travT=0;G.autoT=0;
   G.boost={rate:0,spread:0};G.shipShield=0;G.boosts=[];G.spiralT=0;
-  G.glyphCount={rate:0,spread:0,shield:0};G.comboBoost={rate:0,spread:0,shieldVis:0};
+  G.glyphCount={rate:0,spread:0,shield:0};G.glyphTier={};
+  G.comboBoost={rate:0,rateMult:2,spread:0,spreadBarrels:4,shieldVis:0};
   if((G.vow||'')==='stone')G.shipShield=(G.shipShield||0)+SH.vowStoneShield;
   G.shipShield=(G.shipShield||0)+(G.hbuff.hull||0);
   const tags=[];if(G.vow)tags.push(VOWS[G.vow]);if(G.diffMode===2)tags.push('ХАОС');
@@ -362,7 +378,7 @@ function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shoot
    let ang=-Math.PI/2;
    if(tgt)ang=Math.atan2(tgt.y-p.y,tgt.x-p.x);
    G.autoT-=dt;
- if(G.autoT<=0){G.autoT=.17*M.rate*(1-hb.rate)*(G.comboBoost.rate>0?.5:1);const baseDmg=(SH.autoDmg+G.stage*8)*s.dmg*M.dmg*(1+hb.dmg);
+ if(G.autoT<=0){G.autoT=.17*M.rate*(1-hb.rate)*(G.comboBoost.rate>0?(1/G.comboBoost.rateMult):1);const baseDmg=(SH.autoDmg+G.stage*8)*s.dmg*M.dmg*(1+hb.dmg);
       const focus=tgt===G.shoot.guard;
       const fdmg=focus?baseDmg*2*(1+G.stage*SH.focusScale):baseDmg;
       const pierce=(focus?99:2)+hb.pierce;
@@ -370,7 +386,7 @@ function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shoot
       if(G.boost.spread>0){for(let off=-1;off<=1;off+=2){const aa=ang+off*.26;
        G.bullets.push({x:p.x-14*off,y:p.y-14,vx:Math.cos(aa)*480,vy:Math.sin(aa)*480,r:4,kind:'pierce',elem:'^',dmg:baseDmg*.55,pierce:1,life:1.5,hit:new Set(),col:'#ffd166'});}}
       const ex=G.stats.raysBonus+(G.spells.ray?SPELL_DEF.ray.lv[G.spells.ray-1].n:0);
-      const sideN=(ex>0?2:0)+hb.barrels+(G.comboBoost.spread>0?SH.combo.spreadBarrels:0);
+      const sideN=(ex>0?2:0)+hb.barrels+(G.comboBoost.spread>0?G.comboBoost.spreadBarrels:0);
       for(let i=0;i<sideN;i++){const off=(i-(sideN-1)/2)*.22;
        G.bullets.push({x:p.x,y:p.y-12,vx:Math.sin(off)*520,vy:-Math.cos(off)*520,r:4,kind:'pierce',elem:'^',dmg:baseDmg*.7,pierce:1+hb.pierce,life:1.4,hit:new Set(),col:'#9fd8ff'});}}
     G.spiralT-=dt;
@@ -388,7 +404,7 @@ function updateShooter(dt){const p=G.player,s=G.stats,SH=BALANCE.shooter,M=shoot
       dmgText(p.x,p.y-30,boostName(bo.ty),boostColor(bo.ty));applyBoost(bo.ty);G.boosts.splice(bi,1);
       const tyN=['rate','spread','shield'][bo.ty];
       G.glyphCount[tyN]=(G.glyphCount[tyN]||0)+1;
-      if(G.glyphCount[tyN]>=SH.combo.need){G.glyphCount[tyN]=0;triggerGlyphCombo(tyN);}}
+      checkGlyphTier(tyN);}
     G.boost.rate=Math.max(0,G.boost.rate-dt);G.boost.spread=Math.max(0,G.boost.spread-dt);
      if(G.shoot.dist>=G.shoot.goal)endShooter();}}}
 function applyBoost(ty){const D=BALANCE.shooter.boostDur;
