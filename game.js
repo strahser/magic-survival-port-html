@@ -59,7 +59,7 @@ function startGame(key,test,daily){const C=CLASSES[key],P=BALANCE.player,E=BALAN
   merchantT:15,merchant:null,merchantCd:0,towerT:60,guardT:30,bossWarn:0,bossWarnIdx:-1,ambT:0,evT:25,ev:null,
   runBosses:0,runCrafts:0,runT2:0,achNewly:[],waveCount:0,vowSpdMul:1,
   actIntroT:0,lastAct:-1,noiseT:0,invertT:0,settings:loadSet(),
-  stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,
+  stage:0,rewardOffers:[],mode:'play',shoot:null,pendingShooter:false,beamFx:0,prep:0,bossArena:null,synShown:new Set(),synCard:null,
   track:{dmg:0,crits:0,hearts:0,chests:0,gold:0,evos:0},log:[],milestones:{},telemetry:[],logT:0,lastHit:'',
   cam:{x:WORLD/2,y:WORLD/2},bossRef:null,
   dust:Array.from({length:70},()=>({x:rnd(0,WORLD),y:rnd(0,WORLD),r:rnd(.8,2),ph:rnd(0,TAU)})),
@@ -136,7 +136,8 @@ function buildEvoGrid(list){const g=document.createElement('div');g.style.cssTex
  return g;}
 function buildSynergyGrid(){const g=document.createElement('div');g.style.cssText='display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%';
  for(const sy of SYNERGIES){const on=synergyActive(sy);
-  const needs=sy.need.map(n=>n.type==='passive'?PASSIVE_DEF[n.id].name:SPELL_DEF[n.id].name).join(' + ');
+  const needs=sy.need.map(n=>{if(n.type==='passive')return `<span style="color:#8ce99a">✦ ${PASSIVE_DEF[n.id].name}</span>`;
+   const ow=spellOwner(n.id);return `<span style="color:${ow?CLASSES[ow].color:'#fff'}">${SPELL_DEF[n.id].icon} ${SPELL_DEF[n.id].name}</span>`;}).join(' + ');
   const el=document.createElement('div');el.className='pickCard'+(on?' up':' disabled');
   el.innerHTML=`<div class="pcIcon">${sy.icon}</div><div class="pcName">${sy.name}</div><div class="evoNeeds"><div class="evoNeed">${needs}</div></div><div class="pcLvl">${on?'АКТИВНА':'—'}</div><div class="pcDesc">${sy.desc}</div>`;
   g.appendChild(el);}
@@ -238,31 +239,41 @@ function renderReward(){const box=$('rewardItems');box.innerHTML='';
   el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn">ВЗЯТЬ</button>`;
   el.querySelector('.buyBtn').onclick=()=>{if(state!=='reward')return;G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();sfx('buy');closeReward();};
   box.appendChild(el);}}
-function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';if(G.pendingShooter){G.pendingShooter=false;startShooter();}}
+function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];
+ if(state==='reward')state='play';
+ if(G.pendingShooter){G.pendingShooter=false;G.prep=2.4;banner('ПРИГОТОВЬСЯ К ГИПЕРПРЫЖКУ');}}
 function openChest(ch){const CH=BALANCE.chests;
  if(ch.golden){if(ch.boss)G.pendingShooter=true;openReward(3);banner('¤ СУНДУК: ВЫБОР АРТЕФАКТА');}
  else{const gold=CH.goldMin+Math.round(G.t*CH.goldPerMin);G.gold+=gold;banner('◊ СУНДУК: +'+gold);}
  if(G.track)G.track.chests++;sfx('chest');refreshBuildUI();}
-function startShooter(){G.mode='shooter';G.shoot={warp:1.4,dist:0,goal:2600};
- G.enemies=[];G.ebullets=[];G.travT=0;G.autoT=0;
+function startShooter(){G.mode='shooter';
+ G.ebullets=[];G.bullets=[];G.enemies=G.enemies.filter(e=>e.sh);
+ G.shoot={dist:0,goal:7000,t:0,warp:1.2,mid:false};G.travT=0;G.autoT=0;
  banner('→ ГИПЕРПРЫЖОК →');sfx('time');}
 function endShooter(){G.mode='play';G.shoot=null;
  G.enemies=[];G.ebullets=[];const p=G.player;
  p.x=WORLD/2+rnd(-160,160);p.y=WORLD/2+rnd(-100,100);p.ifr=1.3;
  banner('✦ СЦЕНА '+(G.stage+1)+' — ЖЁСТЧЕ');sfx('boom');}
-function spawnShooterEnemy(){const p=G.player;
- const t=pickArr(['runner','gunner']);const b=BALANCE.enemies[t==='runner'?'runner':'shooter'];
- const hp=b.hp*hpMul()*(1+(G.stage-1)*.25);
- G.enemies.push({x:p.x+rnd(-W/2,W/2)*.9,y:p.y-H/2-rnd(40,160),r:b.r,hp,maxhp:hp,spd:0,
-  dmg:6,xp:3,goldV:0,col:t==='runner'?'#7ee8fa':'#ffb45e',uid:uidN++,
-  flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:t==='runner'?'runner':'shooter',
-  elite:false,boss:false,sh:true,shoot:t,vy:rnd(170,240),ph:rnd(0,TAU),
-  shootT:1.5,tier:Math.min(4,G.stage+1)});}
+function spawnShooterEnemy(){const p=G.player,ph=G.shoot?G.shoot.dist/G.shoot.goal:0;
+ const r=Math.random();let type,mode;
+ if(r<.28){type='blob';mode='straight';}
+ else if(r<.5){type='runner';mode='sine';}
+ else if(r<.68){type='shooter';mode='hover';}
+ else if(r<.85){type='runner';mode='dive';}
+ else{type='brute';mode='sine';}
+ const b=BALANCE.enemies[type];
+ const x=clamp(p.x+rnd(-W/2,W/2)*.9,30,WORLD-30),y=p.y-H/2-rnd(40,180);
+ const e={x,y,r:b.r,hp:b.hp*hpMul(),maxhp:b.hp*hpMul(),spd:0,dmg:b.dmg,xp:b.xp,goldV:b.gold,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type,elite:false,boss:false,sh:true,shMode:mode,shV:rnd(90,180)+ph*70,shA:rnd(30,100),shF:rnd(1.2,2.6),shPh:rnd(0,TAU),shootT:rnd(1,2),tier:Math.min(4,G.stage+1)};
+ if(mode==='dive')e.shV*=1.3;
+ G.enemies.push(e);}
 function updateShooter(dt){const p=G.player,S=G.shoot;
  if(!S)return;
  S.warp=Math.max(0,S.warp-dt);
  if(S.warp>0){S.dist+=90*dt;}
  else{S.dist+=230*dt;
+  if(!G.shoot.mid&&G.shoot.dist>=G.shoot.goal*.5){G.shoot.mid=true;
+   const b=BALANCE.enemies.brute,e={x:p.x,y:p.y-H/2-60,r:b.r*1.3,hp:b.hp*hpMul()*3,maxhp:b.hp*hpMul()*3,spd:0,dmg:b.dmg,xp:8,goldV:20,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'brute',elite:true,boss:false,sh:true,shMode:'hover',shV:110,shA:70,shF:1.6,shPh:0,shootT:1,tier:4};
+   G.enemies.push(e);banner('!! ЭЛИТА В ГИПЕРПРОСТРАНСТВЕ');}
   G.travT-=dt;
   if(G.travT<=0){G.travT=G.shoot.dist>G.shoot.goal*.6?1.5:2.2;spawnShooterEnemy();}
   if(G.shoot.dist>G.shoot.goal*.6&&G.autoT<=0){G.autoT=.25;G.bullets.push({x:p.x+16,y:p.y,vx:520,vy:0,r:5,kind:'pierce',elem:'>',dmg:20*G.stats.dmg,pierce:2,life:1.2,hit:new Set(),col:'#fff'});}
@@ -279,7 +290,9 @@ function renderReward(){const box=$('rewardItems');box.innerHTML='';
   el.innerHTML=`<div class="siIcon">${a.icon}</div><div class="siName">${a.name}</div><div class="siDesc">${a.desc}</div><button class="buyBtn">ВЗЯТЬ</button>`;
   el.querySelector('.buyBtn').onclick=()=>{if(state!=='reward')return;G.artifacts.push(a.id);if(a.keep)a.apply(G);recomputeStats();refreshBuildUI();sfx('buy');closeReward();};
   box.appendChild(el);}}
-function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];if(state==='reward')state='play';if(G.pendingShooter){G.pendingShooter=false;startShooter();}}
+function closeReward(){$('rewardOv').classList.add('hide');G.rewardOffers=[];
+ if(state==='reward')state='play';
+ if(G.pendingShooter){G.pendingShooter=false;G.prep=2.4;banner('ПРИГОТОВЬСЯ К ГИПЕРПРЫЖКУ');}}
 function recipesFor(id){return RECIPES.filter(r=>r.need.includes(id)||r.id===id);}
 function refreshBuildUI(){const sk=$('skills');sk.innerHTML='';
  for(const id in G.spells){const d=SPELL_DEF[id];sk.innerHTML+=`<div class="chip">${d.icon}<b>${d.combo?'★':R[G.spells[id]-1]}</b></div>`;}
@@ -349,9 +362,10 @@ function kill(e,src){if(e.dead)return;e.dead=true;G.kills++;
    G.chests.push({x:e.x,y:e.y,golden:Math.random()<.5,t:0});
    banner('✦ СТРАЖ ПАЛ');}
  if(src!=='burst'&&G.spells.deathburst){const c=SPELL_DEF.deathburst.lv[G.spells.deathburst-1];areaDamage(e.x,e.y,c.aoe*Math.sqrt(G.stats.area*(1+synSum('area'))),c.dmg*G.stats.dmg,{src:'burst'});}
- if(e.boss){G.bossRef=null;G.shake=Math.max(G.shake,12);sfx('boom');banner('☠ БОСС ПОВЕРЖЕН +40');G.runBosses++;addGold(40);
-   G.stage++;G.chests.push({x:e.x,y:e.y,golden:true,t:0,boss:true});
-   banner('☠ БОСС ПОВЕРЖЕН — СУНДУК!');}
+ if(e.boss){G.bossRef=null;G.bossArena=null;G.shake=14;sfx('boom');G.runBosses++;addGold(40);
+  G.stage++;G.enemies=[];G.ebullets=[];G.beamFx=2;
+  G.chests.push({x:e.x,y:e.y,golden:true,t:0,boss:true});
+  banner('☠ БОСС ПОВЕРЖЕН');}
  }
 function areaDamage(x,y,r,dmg,o){o=o||{};for(const e of G.enemies){if(e.dead)continue;
  if(Math.hypot(e.x-x,e.y-y)<r+e.r){dealDamage(e,dmg,o);
@@ -394,7 +408,8 @@ function spawnEnemy(type,elite,pos){const p=pos||spawnPos(),m=hpMul(),E=BALANCE.
 function spawnBoss(i){const BO=BALANCE.bosses;G.bossIdx=i+1;const pos=spawnPos();
  const e={x:pos.x,y:pos.y,r:34,hp:BO.hp[i],maxhp:BO.hp[i],spd:BO.spd+i*5,dmg:BO.dmg,xp:40,goldV:40,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'boss',elite:false,boss:true,shootT:2.5,bossName:BOSS_NAMES[i],tier:4};
  e.aff=pickArr(['regen','thorns','fast']);if(e.aff==='fast')e.spd*=1.4;
- G.enemies.push(e);G.bossRef=e;sfx('boss');G.shake=Math.max(G.shake,8);banner('☠ '+BOSS_NAMES[i]);}
+ G.bossArena={x:WORLD/2,y:WORLD/2,r:380};
+  G.enemies.push(e);G.bossRef=e;sfx('boss');G.shake=Math.max(G.shake,8);banner('☠ '+BOSS_NAMES[i]);}
 function spawnGuard(){const pos=spawnPos(),hp=140*hpMul();
  const e={x:pos.x,y:pos.y,r:26,hp,maxhp:hp,spd:42,dmg:14,xp:15,goldV:20,uid:uidN++,flash:0,stunT:0,slowT:0,slowM:1,kx:0,ky:0,dots:[],type:'guard',elite:false,boss:false,shootT:2,tier:Math.min(4,Math.floor(G.t/150)+1)};
  e.aff=pickArr(['fast','regen','thorns','split']);if(e.aff==='fast')e.spd*=1.5;
@@ -416,7 +431,8 @@ function director(dt){G.spawnT-=dt;G.waveT-=dt;G.merchantT-=dt;G.towerT-=dt;G.ch
  if(G.towerT<=0){G.towerT=75;spawnTower();}
  if(G.guardT<=0){G.guardT=75;spawnGuard();}
  if(G.evT<=0){G.evT=rnd(45,60);startEvent();}
- if(G.spawnT<=0){G.spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/((1+((G.diff||1)-1)*E.diffSpawn)*(G.diffMode===2?BALANCE.chaos.spawn:1)*(1+(G.stage||0)*.1));
+ const bossLock=G.bossRef&&G.enemies.length>=12;
+  if(G.spawnT<=0&&!bossLock){G.spawnT=lerp(E.spawnStart,E.spawnEnd,clamp(t/E.spawnRampT,0,1))/((1+((G.diff||1)-1)*E.diffSpawn)*(G.diffMode===2?BALANCE.chaos.spawn:1)*(1+(G.stage||0)*.1));
   const group=1+Math.floor(clamp(t/E.groupRampT,0,E.groupMax-1));
   for(let i=0;i<group&&G.enemies.length<E.cap;i++){
    const type=t<50?'blob':t<130?pickArr(['blob','blob','runner']):t<180?pickArr(['blob','runner','runner','brute']):pickArr(['blob','runner','brute','shooter','shooter','healer']);
@@ -525,6 +541,12 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
  const dl=Math.hypot(dx,dy);
  if(dl>0){const sp=P.speed*s.spdMul;p.x+=dx/dl*sp*dt;p.y+=dy/dl*sp*dt;p.face=Math.atan2(dy,dx);}
  p.x=clamp(p.x,20,WORLD-20);p.y=clamp(p.y,20,WORLD-20);
+  if(G.bossRef&&G.bossArena){const ba=G.bossArena,dx=p.x-ba.x,dy=p.y-ba.y,d=Math.hypot(dx,dy);
+   if(d>ba.r&&d>.01){p.x=ba.x+dx/d*ba.r;p.y=ba.y+dy/d*ba.r;}}
+  G.beamFx=Math.max(0,(G.beamFx||0)-dt);
+  if(G.prep>0){G.prep-=dt;
+   G.travT-=dt;if(G.travT<=0){G.travT=.9;spawnShooterEnemy();}
+   if(G.prep<=0){G.prep=0;startShooter();}}
  p.ifr-=dt;G.hitFlash=Math.max(0,G.hitFlash-dt*1.4);
  p.hp=Math.min(p.maxhp,p.hp+(P.regen+s.regen)*dt);
  G.vampBudget=Math.min(P.vampCapPerSec,G.vampBudget+P.vampCapPerSec*dt);
@@ -541,6 +563,8 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
  let cdrMul=s.cdr*(1-synSum('cdr'));if(s.accelerator)cdrMul*=Math.max(.55,1-Math.max(0,s.spdMul-1)*.6);
  for(const id in G.spells){const def=SPELL_DEF[id];if(!def.cd)continue;G.timers[id]=(G.timers[id]||0)-dt;if(G.timers[id]<=0)G.timers[id]=tryCast(id,G.spells[id])?def.cd*Math.max(.3,cdrMul):.15;}
  updateRing(dt);updateSkel(dt);updateAura(dt);updateRay(dt);updateCyclone(dt);updateMirages(dt);updatePets(dt);
+  for(const sy of activeSynergies())if(!G.synShown.has(sy.id)){G.synShown.add(sy.id);G.synCard={sy,t:2.8};sfx('level');}
+  if(G.synCard){G.synCard.t-=dt;if(G.synCard.t<=0)G.synCard=null;}
  for(const b of G.bullets){b.age=(b.age||0)+dt;b.life-=dt;if(b.life<=0){b.dead=true;continue;}
   if(b.return){if(!b.ret&&b.age>=b.maxLife*.5){b.ret=true;b.hit.clear();}
    if(b.ret){const a=Math.atan2(p.y-b.y,p.x-b.x);b.vx=Math.cos(a)*500;b.vy=Math.sin(a)*500;if(Math.hypot(p.x-b.x,p.y-b.y)<26){b.dead=true;continue;}}}
@@ -561,10 +585,17 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
   if(e.aff==='thorns'&&Math.hypot(p.x-e.x,p.y-e.y)<e.r+22)damagePlayer(e.dmg*.4);
   for(let i=e.dots.length-1;i>=0;i--){const d=e.dots[i];e.hp-=d.dps*dt;d.t-=dt;if(d.t<=0)e.dots.splice(i,1);}
   if(e.hp<=0){kill(e,'dot');continue;}
-  if(e.sh){let sx=Math.sin(e.ph+dt*4)*130;
-   e.x+=sx*dt;e.y+=e.vy*dt;
-   if(e.type==='shooter'){e.shootT=(e.shootT||1.5)-dt;if(e.shootT<=0){e.shootT=1.6;G.ebullets.push({x:e.x,y:e.y,vx:0,vy:260,r:5,dmg:8,life:3});}}
-   if(e.shoot==='gunner'&&e.y<p.y){e.shootT2=(e.shootT2||2)-dt;if(e.shootT2<=0){e.shootT2=2.2;G.ebullets.push({x:e.x,y:e.y,vx:0,vy:300,r:6,dmg:10,life:4});}}}
+  if(e.sh){
+   e.shPh+=dt*e.shF;const m=e.shMode||'sine';
+   if(m==='straight')e.y+=e.shV*dt;
+   else if(m==='sine'){e.x+=Math.sin(e.shPh)*e.shA*dt;e.y+=e.shV*dt;}
+   else if(m==='dive'){const a=Math.atan2(p.y-e.y,p.x-e.x);e.x+=Math.cos(a)*e.shV*1.3*dt;e.y+=Math.sin(a)*e.shV*1.3*dt;}
+   else if(m==='hover'){if(e.y<p.y-160)e.y+=e.shV*dt;else e.x+=Math.sin(e.shPh)*e.shA*dt;}
+   e.x=clamp(e.x,20,WORLD-20);
+   if(e.y>p.y+H/2+80)e.dead=true;
+   else if((e.type==='shooter'||m==='hover')&&e.y<p.y+H/2){e.shootT-=dt;
+    if(e.shootT<=0){e.shootT=rnd(1.2,2);const a=Math.atan2(p.y-e.y,p.x-e.x);
+     G.ebullets.push({x:e.x,y:e.y,vx:Math.cos(a)*190,vy:Math.sin(a)*190,r:5,dmg:e.dmg*.8,life:3});}}}
   else if(e.spd>0&&e.stunT<=0){
    const a=Math.atan2(p.y-e.y,p.x-e.x),d=Math.hypot(p.x-e.x,p.y-e.y)||1;
    let sp=e.spd*(e.slowT>0?e.slowM:1);if(G.ev&&G.ev.type==='fog')sp*=.85;if(G.vowSpdMul)sp*=G.vowSpdMul;
@@ -624,7 +655,7 @@ function update(dt){const p=G.player,s=G.stats,P=BALANCE.player;
  for(const q of G.parts){q.t-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.96;q.vy*=.96;}
  G.parts=G.parts.filter(q=>q.t>0);
  for(const t of G.texts){t.t-=dt;t.y-=34*dt;}G.texts=G.texts.filter(t=>t.t>0);
-if(G.mode==='shooter')updateShooter(dt);else director(dt);
+if(G.mode==='shooter'||G.prep>0)updateShooter(dt);else director(dt);
  const k=1-Math.pow(.001,dt);G.cam.x=lerp(G.cam.x,p.x,k);G.cam.y=lerp(G.cam.y,p.y,k);
  G.cam.x=clamp(G.cam.x,Math.min(W/2,WORLD/2),Math.max(WORLD-W/2,WORLD/2));
  G.cam.y=clamp(G.cam.y,Math.min(H/2,WORLD/2),Math.max(WORLD-H/2,WORLD/2));

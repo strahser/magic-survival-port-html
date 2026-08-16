@@ -83,7 +83,10 @@ ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,0,W,H);
   for(const d of G.deco){const n=Math.floor(d.r/6);for(let i=0;i<n;i++){const a=i/n*TAU+G.t*d.s;glyph('·',d.x+Math.cos(a)*d.r,d.y+Math.sin(a)*d.r,12,.1);}}
   {const st=26;for(let x=0;x<=WORLD;x+=st){glyph('·',x,0,14,.5);glyph('·',x,WORLD,14,.5);}for(let y=0;y<=WORLD;y+=st){glyph('·',0,y,14,.5);glyph('·',WORLD,y,14,.5);}}
   }
- for(const z of G.zones){
+ if(G.bossRef&&G.bossArena){const ba=G.bossArena;
+   ctx.strokeStyle='rgba(255,95,109,.55)';ctx.lineWidth=2;ctx.setLineDash([9,9]);
+   ctx.beginPath();ctx.arc(ba.x,ba.y,ba.r,0,TAU);ctx.stroke();ctx.setLineDash([]);}
+  for(const z of G.zones){
   if(z.type==='plague'){ctx.fillStyle='rgba(140,233,154,.13)';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,TAU);ctx.fill();}
   else if(z.type==='lava'){ctx.fillStyle='rgba(255,138,61,.14)';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,TAU);ctx.fill();}
   else if(z.type==='grave'){ctx.fillStyle='rgba(140,233,154,.12)';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,TAU);ctx.fill();}
@@ -101,7 +104,7 @@ if(G.mode!=='shooter'){const GOLD='#ffd166';
   for(const h of G.hearts)glyph('+',h.x,h.y+Math.sin(h.t*5)*2,20,.95,10);}
  for(const cp of G.cycPos){glyph('Ø',cp.x,cp.y,26,.9,10);}
  for(const e of G.enemies){const g=EGLYPH[e.type]||'Ω';const jx=e.flash>0?rnd(-2,2):0,jy=e.flash>0?rnd(-2,2):0;
-  if(e.boss)glyph('[[Ω]]',e.x,e.y,40,.98,18);
+  if(e.boss)glyph('[[Ω]]',e.x,e.y,40,.98,18,'#ff5f6d');
   else if(e.type==='tower')glyph('#§#',e.x,e.y,28,.95,12);
   else if(e.type==='guard')glyph('[Ω]',e.x+jx,e.y+jy,30,.95,12);
   else if(e.elite)glyph('['+g+']',e.x+jx,e.y+jy,24,.95,12);
@@ -145,7 +148,23 @@ if(G.mode==='shooter'&&G.shoot){const pr=G.shoot.dist/G.shoot.goal;
  if(G.settings.pointers){if(G.merchant&&!G.merchant.used)drawPointer(G.merchant.x,G.merchant.y,'£','#ffd166');
   for(const ch of G.chests)drawPointer(ch.x,ch.y,ch.golden?'¤':'◊',ch.golden?'#ffd166':'#8ce99a');}
  if(G.bossWarn>0){ctx.save();ctx.globalAlpha=.6+.4*Math.sin(G.t*18);ctx.font='44px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ff5f6d';ctx.shadowColor='#ff5f6d';ctx.shadowBlur=18;ctx.fillText('!!! ВНИМАНИЕ !!!',W/2,110);ctx.restore();}
- if(G.ev&&G.ev.type==='fog'){const g2=ctx.createRadialGradient(W/2,H/2,120,W/2,H/2,Math.max(W,H)*.6);g2.addColorStop(0,'rgba(0,0,0,0)');g2.addColorStop(1,'rgba(0,0,0,.85)');ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);}}
+ if(G.ev&&G.ev.type==='fog'){const g2=ctx.createRadialGradient(W/2,H/2,120,W/2,H/2,Math.max(W,H)*.6);g2.addColorStop(0,'rgba(0,0,0,0)');g2.addColorStop(1,'rgba(0,0,0,.85)');ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);}
+ if(G.beamFx>0){const a=clamp(G.beamFx/2,0,1);
+  for(let i=0;i<10;i++){const y=H*(i+.5)/10,len=W*.6*a;
+   ctx.globalAlpha=a*.5;ctx.fillStyle='#ffd166';ctx.fillRect(W-len,y-2,len,4);}
+  ctx.globalAlpha=1;}
+ if(G.prep>0){const f=1-G.prep/2.4;
+  for(let i=0;i<14;i++){const x=(i+.5)/14*W,hgt=H*f*((i%3===0)?1:.7);
+   ctx.globalAlpha=.25+.3*f;ctx.fillStyle='#bfe9ff';ctx.fillRect(x-2,H-hgt,4,hgt);}
+  ctx.globalAlpha=1;ctx.font='40px VT323, monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#fff';ctx.shadowColor='#7ee8fa';ctx.shadowBlur=16;
+  ctx.fillText('ПРИГОТОВЬСЯ К ГИПЕРПРЫЖКУ',W/2,H/2);ctx.shadowBlur=0;}
+ const sc=$('synCard');
+ if(G.synCard){const sy=G.synCard.sy;sc.classList.remove('hide');
+  sc.innerHTML=`<div class="scIcon">${sy.icon}</div><div class="scName">~ ${sy.name}</div><div class="scDesc">${sy.desc}</div><div class="scNeeds">${sy.need.map(n=>{
+   if(n.type==='passive')return `<span class="scNeed" style="color:#8ce99a">✦ ${PASSIVE_DEF[n.id].name}</span>`;
+   const ow=spellOwner(n.id);return `<span class="scNeed" style="color:${ow?CLASSES[ow].color:'#fff'}">${SPELL_DEF[n.id].icon} ${SPELL_DEF[n.id].name}</span>`;}).join(' + ')}</div>`;}
+ else sc.classList.add('hide');}
 /* ввод */
 addEventListener('keydown',e=>{initAudio();
  if(state==='intro'){skipIntro();return;}
