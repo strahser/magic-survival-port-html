@@ -13,7 +13,7 @@ const BALANCE={
   spawnStart:.7,spawnEnd:.45,spawnRampT:480,groupMax:2,groupRampT:150,
   eliteEvery:20,eliteMinEvery:8,eliteStartT:120,cap:120,
   startRing:10,startDistMin:330,startDistMax:540,
-  diffHp:.35,diffDmg:.12,diffSpawn:.2,diffElite:1.5},
+  diffHp:.3,diffDmg:.1,diffSpawn:.15,diffElite:1.5},
  waves:{every:32,count:12,hp:10,dmg:12,spd:80},
  bosses:{times:[70,180,300,430],hp:[450,1100,2200,3600],dmg:24,spd:46,projDmg:18,shootEvery:3.2,projCountBase:5},
  towers:{hp:180,gold:45,heal:30,xp:10,projDmg:8,shootEvery:3,projCount:3},
